@@ -41,6 +41,12 @@
     }
     .btn:active { transform: scale(.95); }
     .btn:disabled { opacity: .4; cursor: default; }
+    .copyright {
+      margin-top: 2rem;
+      font-size: .75rem;
+      color: var(--muted);
+      letter-spacing: .04em;
+    }
     .btn-primary {
       background: linear-gradient(135deg, var(--accent), var(--accent2));
       color: #fff;
@@ -366,7 +372,7 @@
 <!-- ══ 시작 / 참가자 정보 입력 화면 ══ -->
 <div id="screen-start">
   <h1>DIGIT SPAN TEST</h1>
-  <p class="subtitle">화면에 나타나는 숫자들을 순서대로 기억하세요</p>
+  <p class="subtitle">화면에 나타나는 숫자들을 순서대로 기억하여 입력하세요.<br>처음에 3개로 시작해서 성공하면 계속 갯수가 늘어납니다.</p>
   <div id="participant-count" class="participant-count"></div>
 
   <div class="form-card">
@@ -392,6 +398,7 @@
   </div>
 
   <button class="btn btn-primary" id="btn-start">START</button>
+  <p class="copyright">© 2026 Tae Kim. All rights reserved.</p>
 </div>
 
 <!-- ══ 게임 화면 ══ -->
