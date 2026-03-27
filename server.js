@@ -177,7 +177,22 @@ app.post('/api/save', async (req, res) => {
 /* ════════════════════════════════════════
    API: 전체 세션 JSON
 ════════════════════════════════════════ */
-app.get('/api/count', (req, res) => {
+app.get('/api/count', async (req, res) => {
+  // Google Sheets가 연결되어 있으면 시트 행 수로 반환 (재배포에도 유지)
+  // 연결 안 된 경우 SQLite 카운트로 fallback
+  if (sheetsClient && SPREADSHEET_ID) {
+    try {
+      const result = await sheetsClient.spreadsheets.values.get({
+        spreadsheetId: SPREADSHEET_ID,
+        range: 'Sheet1!A:A',
+      });
+      const rows = result.data.values || [];
+      // 첫 행은 헤더이므로 -1
+      return res.json({ count: Math.max(0, rows.length - 1) });
+    } catch (e) {
+      console.warn('Sheets count error:', e.message);
+    }
+  }
   const row = db.prepare('SELECT COUNT(*) as n FROM sessions').get();
   res.json({ count: row.n });
 });
