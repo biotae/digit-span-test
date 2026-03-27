@@ -414,6 +414,7 @@
   <div class="lang-switcher">
     <button class="lang-btn active" id="lang-ko">한국어</button>
     <button class="lang-btn"        id="lang-en">English</button>
+    <button class="lang-btn"        id="lang-zh">中文</button>
   </div>
 
   <h1>DIGIT SPAN TEST</h1>
@@ -546,6 +547,33 @@ const T = {
     resultOk:       'Pass',      resultNg:          'Fail',
     metaAge:        age => `${age} y/o`,
     metaAttempt:    n => n > 1 ? ` · Attempt ${n}` : '',
+  },
+  zh: {
+    subtitle:       '观看屏幕上出现的数字，然后按顺序输入。<br>从3位数开始——每次成功后增加一位。',
+    countLabel:     n => `已有 <span class="count-num">${n.toLocaleString()}</span> 人参与`,
+    labelName:      '姓名',      placeholderName:   '张三',
+    labelGender:    '性别',
+    gMale: '男', gFemale: '女', gOther: '其他',
+    labelAge:       '年龄',      placeholderAge:    '25',
+    ready:          '准备中…',
+    inputPrompt:    '请按顺序输入数字',
+    correct:        '✓ 正确！',  wrong:             '✗ 错误',
+    btnConfirm:     '确认',
+    goodbye:        '感谢您的参与',
+    bestLabel:      '最高成绩',
+    thLevel: '关卡', thResult: '结果', thEntered: '输入', thAnswer: '正确答案',
+    saving:         '保存中…',
+    saved:          id => `✓ 已保存（会话 #${id}）`,
+    saveError:      '⚠ 保存失败（服务器不可用）',
+    retryPrompt:    '是否再试一次？',
+    btnRetry:       '再试一次',
+    btnNewUser:     '新参与者',
+    alertName:      '请输入您的姓名。',
+    alertGender:    '请选择您的性别。',
+    alertAge:       '请输入有效的年龄。',
+    resultOk:       '成功',      resultNg:          '失败',
+    metaAge:        age => `${age}岁`,
+    metaAttempt:    n => n > 1 ? ` · 第${n}次` : '',
   }
 };
 
@@ -558,6 +586,7 @@ function applyLang() {
   // 언어 버튼
   document.getElementById('lang-ko').classList.toggle('active', lang === 'ko');
   document.getElementById('lang-en').classList.toggle('active', lang === 'en');
+  document.getElementById('lang-zh').classList.toggle('active', lang === 'zh');
 
   // 시작 화면
   document.getElementById('txt-subtitle').innerHTML = t.subtitle;
@@ -590,6 +619,7 @@ function applyLang() {
 
 document.getElementById('lang-ko').addEventListener('click', () => { lang = 'ko'; applyLang(); });
 document.getElementById('lang-en').addEventListener('click', () => { lang = 'en'; applyLang(); });
+document.getElementById('lang-zh').addEventListener('click', () => { lang = 'zh'; applyLang(); });
 
 /* ════════════════════════════════════════
    오디오 유틸 (파일 재생)
