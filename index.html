@@ -534,7 +534,15 @@ function playStimulus(durationSec) {
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 function randDigitSeq(len) {
-  return Array.from({ length: len }, () => Math.floor(Math.random() * 10));
+  const digits = [1,2,3,4,5,6,7,8,9];
+  const seq = [];
+  for (let i = 0; i < len; i++) {
+    let d;
+    do { d = digits[Math.floor(Math.random() * digits.length)]; }
+    while (d === seq[seq.length - 1]); // 연속 중복 제외
+    seq.push(d);
+  }
+  return seq;
 }
 
 /* ════════════════════════════════════════
@@ -585,14 +593,16 @@ function refreshHistBar() {
 ════════════════════════════════════════ */
 async function playSequence(seq) {
   for (let i = 0; i < seq.length; i++) {
+    // 소리(0.5초)와 디스플레이(1초) 동시 시작
     $card.textContent = seq[i];
     $card.className   = 'show';
     playStimulus(0.5);
-    await sleep(500);
+    await sleep(1000);  // 디스플레이 1초
 
+    // 다음 숫자 전 0.2초 pause
     $card.textContent = '';
     $card.className   = 'blank';
-    await sleep(500);
+    await sleep(200);
   }
 }
 
