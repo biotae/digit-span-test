@@ -48,11 +48,11 @@ const allAsc  = db.prepare('SELECT * FROM sessions ORDER BY created_at ASC');
 const CREDS_PATH  = path.join(__dirname, 'google-credentials.json');
 const CONFIG_PATH = path.join(__dirname, 'sheets.config.json');
 
-let sheetsClient     = null;
-let SPREADSHEET_ID   = '';
+let sheetsClient   = null;
+let SPREADSHEET_ID = process.env.SPREADSHEET_ID || '';
 
-// sheets.config.json 에서 스프레드시트 ID 로드
-if (fs.existsSync(CONFIG_PATH)) {
+// 로컬 실행 시 sheets.config.json 에서도 로드
+if (!SPREADSHEET_ID && fs.existsSync(CONFIG_PATH)) {
   try {
     const cfg = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8'));
     SPREADSHEET_ID = cfg.spreadsheetId || '';
@@ -62,14 +62,21 @@ if (fs.existsSync(CONFIG_PATH)) {
 }
 
 async function initGoogleSheets() {
-  if (!fs.existsSync(CREDS_PATH)) return;
-  if (!SPREADSHEET_ID)             return;
+  if (!SPREADSHEET_ID) return;
+
+  // 환경변수(Render) 또는 파일(로컬) 둘 다 지원
+  const hasEnvCreds  = !!process.env.GOOGLE_CREDENTIALS_JSON;
+  const hasFileCreds = fs.existsSync(CREDS_PATH);
+  if (!hasEnvCreds && !hasFileCreds) return;
 
   try {
-    const auth = new google.auth.GoogleAuth({
-      keyFile: CREDS_PATH,
-      scopes:  ['https://www.googleapis.com/auth/spreadsheets'],
-    });
+    let authConfig = { scopes: ['https://www.googleapis.com/auth/spreadsheets'] };
+    if (hasEnvCreds) {
+      authConfig.credentials = JSON.parse(process.env.GOOGLE_CREDENTIALS_JSON);
+    } else {
+      authConfig.keyFile = CREDS_PATH;
+    }
+    const auth = new google.auth.GoogleAuth(authConfig);
     const client = await auth.getClient();
     sheetsClient = google.sheets({ version: 'v4', auth: client });
 
