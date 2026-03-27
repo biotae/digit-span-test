@@ -1,0 +1,5 @@
+node_modules/
+data.db
+google-credentials.json
+sheets.config.json
+*.log

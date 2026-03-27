@@ -1,0 +1,789 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Digit Span Test</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:      #0d0d1a;
+      --panel:   #13132b;
+      --accent:  #5e81f4;
+      --accent2: #f45e81;
+      --text:    #e8e8f0;
+      --muted:   #6b6b90;
+      --success: #4ade80;
+      --fail:    #f45e81;
+      --pink:    #f4a45e;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+    }
+
+    .btn {
+      border: none;
+      border-radius: 50px;
+      cursor: pointer;
+      font-weight: 700;
+      letter-spacing: .06em;
+      transition: transform .1s, opacity .15s;
+    }
+    .btn:active { transform: scale(.95); }
+    .btn:disabled { opacity: .4; cursor: default; }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: #fff;
+      font-size: 1.2rem;
+      padding: .9rem 3.5rem;
+      box-shadow: 0 8px 32px rgba(94,129,244,.35);
+    }
+
+    /* ══════════════════════════════
+       시작 / 참가자 입력 화면
+    ══════════════════════════════ */
+    #screen-start {
+      text-align: center;
+      width: 100%;
+      max-width: 420px;
+      animation: fadeIn .5s ease;
+    }
+    #screen-start h1 {
+      font-size: clamp(1.8rem, 5vw, 2.8rem);
+      letter-spacing: .12em;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: .4rem;
+    }
+    #screen-start .subtitle {
+      color: var(--muted);
+      font-size: .95rem;
+      margin-bottom: 1.2rem;
+    }
+    .participant-count {
+      display: inline-flex;
+      align-items: center;
+      gap: .5rem;
+      background: rgba(94,129,244,.08);
+      border: 1px solid rgba(94,129,244,.2);
+      border-radius: 50px;
+      padding: .35rem 1.1rem;
+      font-size: .82rem;
+      color: var(--muted);
+      margin-bottom: 2rem;
+      min-height: 1.8rem;
+    }
+    .participant-count .count-num {
+      font-size: 1rem;
+      font-weight: 900;
+      color: var(--accent);
+    }
+
+    .form-card {
+      background: var(--panel);
+      border: 1px solid rgba(94,129,244,.18);
+      border-radius: 20px;
+      padding: 1.8rem;
+      margin-bottom: 1.6rem;
+      text-align: left;
+    }
+    .field { margin-bottom: 1.3rem; }
+    .field:last-child { margin-bottom: 0; }
+    .field label {
+      display: block;
+      font-size: .75rem;
+      font-weight: 700;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: .45rem;
+    }
+    .field input[type="text"],
+    .field input[type="number"] {
+      width: 100%;
+      background: rgba(255,255,255,.04);
+      border: 1px solid rgba(94,129,244,.25);
+      border-radius: 10px;
+      color: var(--text);
+      font-size: 1rem;
+      padding: .6rem 1rem;
+      outline: none;
+      transition: border-color .15s;
+    }
+    .field input:focus { border-color: var(--accent); }
+    .field input::placeholder { color: var(--muted); }
+
+    /* 성별 라디오 */
+    .gender-row { display: flex; gap: .5rem; }
+    .gender-row input[type="radio"] { display: none; }
+    .gender-row label {
+      flex: 1;
+      text-align: center;
+      padding: .5rem .2rem;
+      border-radius: 10px;
+      border: 1px solid rgba(94,129,244,.25);
+      cursor: pointer;
+      font-size: .92rem;
+      font-weight: 600;
+      color: var(--muted);
+      transition: all .15s;
+    }
+    .gender-row input:checked + label {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+      box-shadow: 0 4px 16px rgba(94,129,244,.3);
+    }
+
+    /* ══════════════════════════════
+       게임 화면
+    ══════════════════════════════ */
+    #screen-game {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1.8rem;
+      animation: fadeIn .4s ease;
+    }
+
+    #history-bar {
+      display: flex;
+      gap: .45rem;
+      flex-wrap: wrap;
+      justify-content: center;
+      min-height: 26px;
+    }
+    .hist-chip {
+      font-size: .72rem;
+      font-weight: 700;
+      padding: .18rem .65rem;
+      border-radius: 50px;
+      letter-spacing: .05em;
+    }
+    .hist-chip.ok { background: rgba(74,222,128,.15); color: var(--success); border: 1px solid rgba(74,222,128,.3); }
+    .hist-chip.ng { background: rgba(244,94,129,.15); color: var(--fail);    border: 1px solid rgba(244,94,129,.3); }
+
+    #level-badge {
+      font-size: .95rem;
+      font-weight: 700;
+      letter-spacing: .2em;
+      text-transform: uppercase;
+      color: var(--accent);
+      background: rgba(94,129,244,.1);
+      border: 1px solid rgba(94,129,244,.28);
+      border-radius: 50px;
+      padding: .35rem 1.3rem;
+    }
+
+    #digit-card {
+      width: clamp(150px, 26vw, 210px);
+      height: clamp(195px, 34vw, 270px);
+      background: var(--panel);
+      border-radius: 22px;
+      border: 2px solid rgba(94,129,244,.15);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: clamp(5rem, 13vw, 8.5rem);
+      font-weight: 900;
+      color: var(--text);
+      box-shadow: 0 20px 60px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.05);
+      transition: border-color .12s, box-shadow .12s, background .12s;
+      user-select: none;
+    }
+    #digit-card.show {
+      border-color: var(--accent);
+      box-shadow: 0 20px 60px rgba(94,129,244,.32), inset 0 1px 0 rgba(255,255,255,.08);
+      background: linear-gradient(160deg, #1a1a3a, #13132b);
+    }
+    #digit-card.blank { border-color: rgba(94,129,244,.07); }
+
+    #status-msg {
+      font-size: .92rem;
+      color: var(--muted);
+      letter-spacing: .05em;
+      min-height: 1.4rem;
+      text-align: center;
+    }
+    #status-msg.ok   { color: var(--success); font-weight: 700; font-size: 1.05rem; }
+    #status-msg.fail { color: var(--fail);    font-weight: 700; font-size: 1.05rem; }
+
+    /* 입력 칸 */
+    #input-area {
+      display: flex;
+      gap: .55rem;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .digit-input {
+      width: clamp(42px, 8.5vw, 56px);
+      height: clamp(54px, 10.5vw, 70px);
+      border-radius: 12px;
+      border: 2px solid rgba(94,129,244,.28);
+      background: var(--panel);
+      color: var(--text);
+      font-size: clamp(1.5rem, 4vw, 2.1rem);
+      font-weight: 900;
+      text-align: center;
+      caret-color: transparent;
+      outline: none;
+      transition: border-color .12s, box-shadow .12s, background .12s;
+    }
+    .digit-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(94,129,244,.2); }
+    .digit-input.correct { border-color: var(--success); background: rgba(74,222,128,.1); color: var(--success); }
+    .digit-input.wrong   { border-color: var(--fail);    background: rgba(244,94,129,.1); color: var(--fail); }
+
+    /* ══════════════════════════════
+       결과 화면
+    ══════════════════════════════ */
+    #screen-result {
+      text-align: center;
+      width: 100%;
+      max-width: 480px;
+      animation: fadeIn .5s ease;
+    }
+    #screen-result h2 {
+      font-size: clamp(1.5rem, 5vw, 2.2rem);
+      letter-spacing: .1em;
+      margin-bottom: .2rem;
+    }
+    .goodbye {
+      color: var(--muted);
+      font-size: 1rem;
+      letter-spacing: .06em;
+      margin-bottom: 1.4rem;
+    }
+    .result-meta {
+      display: flex;
+      justify-content: center;
+      gap: .8rem;
+      flex-wrap: wrap;
+      margin-bottom: 1.6rem;
+    }
+    .meta-chip {
+      font-size: .78rem;
+      font-weight: 700;
+      padding: .28rem .9rem;
+      border-radius: 50px;
+      letter-spacing: .06em;
+      background: rgba(255,255,255,.05);
+      border: 1px solid rgba(255,255,255,.1);
+      color: var(--muted);
+    }
+    .meta-chip.cond-40hz      { color: var(--accent); border-color: rgba(94,129,244,.35); background: rgba(94,129,244,.1); }
+    .meta-chip.cond-pink_noise{ color: var(--pink);   border-color: rgba(244,164,94,.35); background: rgba(244,164,94,.1); }
+
+    .best-label { color: var(--muted); font-size: .82rem; margin-bottom: .2rem; }
+    .best-value {
+      font-size: clamp(2rem, 8vw, 3.2rem);
+      font-weight: 900;
+      background: linear-gradient(135deg, var(--accent), var(--success));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 1.8rem;
+    }
+
+    #result-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 1.8rem;
+      font-size: .88rem;
+    }
+    #result-table th {
+      font-size: .7rem;
+      font-weight: 700;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      padding: .35rem .6rem;
+      border-bottom: 1px solid rgba(255,255,255,.07);
+    }
+    #result-table td {
+      padding: .45rem .6rem;
+      border-bottom: 1px solid rgba(255,255,255,.04);
+    }
+    #result-table td.ok { color: var(--success); font-weight: 700; }
+    #result-table td.ng { color: var(--fail);    font-weight: 700; }
+
+    .save-status {
+      font-size: .78rem;
+      color: var(--muted);
+      margin-bottom: 1.2rem;
+      min-height: 1.1rem;
+    }
+    .save-status.saved { color: var(--success); }
+    .save-status.error { color: var(--fail); }
+    .retry-prompt {
+      font-size: 1rem;
+      color: var(--text);
+      margin-bottom: .9rem;
+      letter-spacing: .04em;
+    }
+    .retry-buttons {
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .btn-retry {
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: #fff;
+      font-size: 1.1rem;
+      padding: .8rem 2.5rem;
+      box-shadow: 0 6px 24px rgba(94,129,244,.35);
+    }
+    .btn-newuser {
+      background: rgba(255,255,255,.07);
+      color: var(--muted);
+      font-size: 1rem;
+      padding: .8rem 2rem;
+      border: 1px solid rgba(255,255,255,.1);
+    }
+
+    .hidden { display: none !important; }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ══ 시작 / 참가자 정보 입력 화면 ══ -->
+<div id="screen-start">
+  <h1>DIGIT SPAN TEST</h1>
+  <p class="subtitle">화면에 나타나는 숫자들을 순서대로 기억하세요</p>
+  <div id="participant-count" class="participant-count"></div>
+
+  <div class="form-card">
+    <div class="field">
+      <label>이름</label>
+      <input type="text" id="inp-name" placeholder="홍길동" autocomplete="off" />
+    </div>
+    <div class="field">
+      <label>성별</label>
+      <div class="gender-row">
+        <input type="radio" name="gender" id="g-male"   value="남성" />
+        <label for="g-male">남성</label>
+        <input type="radio" name="gender" id="g-female" value="여성" />
+        <label for="g-female">여성</label>
+        <input type="radio" name="gender" id="g-other"  value="기타" />
+        <label for="g-other">기타</label>
+      </div>
+    </div>
+    <div class="field">
+      <label>나이</label>
+      <input type="number" id="inp-age" placeholder="25" min="1" max="120" autocomplete="off" />
+    </div>
+  </div>
+
+  <button class="btn btn-primary" id="btn-start">START</button>
+</div>
+
+<!-- ══ 게임 화면 ══ -->
+<div id="screen-game" class="hidden">
+  <div id="history-bar"></div>
+  <div id="level-badge">3-DIGIT SPAN</div>
+  <div id="digit-card" class="blank"></div>
+  <div id="status-msg">잠시 후 시작합니다…</div>
+  <div id="input-area" class="hidden"></div>
+</div>
+
+<!-- ══ 결과 화면 ══ -->
+<div id="screen-result" class="hidden">
+  <h2>GAME OVER</h2>
+  <p class="goodbye">수고하셨습니다</p>
+
+  <div class="result-meta">
+    <span class="meta-chip" id="res-name"></span>
+  </div>
+
+  <div class="best-label">최고 달성</div>
+  <div class="best-value" id="result-best">–</div>
+
+  <table id="result-table">
+    <thead>
+      <tr><th>레벨</th><th>결과</th><th>입력</th><th>정답</th></tr>
+    </thead>
+    <tbody id="result-tbody"></tbody>
+  </table>
+
+  <p class="save-status" id="save-status"></p>
+  <p class="retry-prompt">재도전 하시겠습니까?</p>
+  <div class="retry-buttons">
+    <button class="btn btn-retry"    id="btn-retry">재도전</button>
+    <button class="btn btn-newuser"  id="btn-restart">새 참가자</button>
+  </div>
+</div>
+
+<script>
+/* ════════════════════════════════════════
+   오디오 유틸
+════════════════════════════════════════ */
+let audioCtx = null;
+
+function ensureAudioCtx() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  return audioCtx;
+}
+
+/* 40 Hz 스퀘어 웨이브 */
+function play40Hz(durationSec) {
+  try {
+    const ctx  = ensureAudioCtx();
+    const osc  = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'square';
+    osc.frequency.setValueAtTime(40, ctx.currentTime);
+    gain.gain.setValueAtTime(0, ctx.currentTime);
+    gain.gain.linearRampToValueAtTime(0.12, ctx.currentTime + 0.01);
+    gain.gain.setValueAtTime(0.12, ctx.currentTime + durationSec - 0.02);
+    gain.gain.linearRampToValueAtTime(0, ctx.currentTime + durationSec);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + durationSec);
+  } catch (e) { console.warn('Audio 40Hz:', e); }
+}
+
+/* 핑크 노이즈 (Voss-McCartney 근사) */
+function playPinkNoise(durationSec) {
+  try {
+    const ctx = ensureAudioCtx();
+    const sr  = ctx.sampleRate;
+    const n   = Math.ceil(sr * durationSec);
+    const buf = ctx.createBuffer(1, n, sr);
+    const data = buf.getChannelData(0);
+    let b0=0,b1=0,b2=0,b3=0,b4=0,b5=0,b6=0;
+    for (let i = 0; i < n; i++) {
+      const w = Math.random() * 2 - 1;
+      b0 = 0.99886*b0 + w*0.0555179;
+      b1 = 0.99332*b1 + w*0.0750759;
+      b2 = 0.96900*b2 + w*0.1538520;
+      b3 = 0.86650*b3 + w*0.3104856;
+      b4 = 0.55000*b4 + w*0.5329522;
+      b5 = -0.7616*b5 - w*0.0168980;
+      data[i] = (b0+b1+b2+b3+b4+b5+b6 + w*0.5362) * 0.11;
+      b6 = w * 0.115926;
+    }
+    const src  = ctx.createBufferSource();
+    const gain = ctx.createGain();
+    src.buffer = buf;
+    gain.gain.setValueAtTime(0, ctx.currentTime);
+    gain.gain.linearRampToValueAtTime(0.38, ctx.currentTime + 0.01);
+    gain.gain.setValueAtTime(0.38, ctx.currentTime + durationSec - 0.02);
+    gain.gain.linearRampToValueAtTime(0, ctx.currentTime + durationSec);
+    src.connect(gain);
+    gain.connect(ctx.destination);
+    src.start(ctx.currentTime);
+    src.stop(ctx.currentTime + durationSec);
+  } catch (e) { console.warn('Audio PinkNoise:', e); }
+}
+
+/* 조건에 따라 자동 분기 */
+function playStimulus(durationSec) {
+  if (condition === '40hz') play40Hz(durationSec);
+  else                      playPinkNoise(durationSec);
+}
+
+/* ════════════════════════════════════════
+   유틸
+════════════════════════════════════════ */
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+function randDigitSeq(len) {
+  return Array.from({ length: len }, () => Math.floor(Math.random() * 10));
+}
+
+/* ════════════════════════════════════════
+   DOM
+════════════════════════════════════════ */
+const $start    = document.getElementById('screen-start');
+const $game     = document.getElementById('screen-game');
+const $result   = document.getElementById('screen-result');
+const $badge    = document.getElementById('level-badge');
+const $card     = document.getElementById('digit-card');
+const $status   = document.getElementById('status-msg');
+const $inputArea= document.getElementById('input-area');
+const $histBar  = document.getElementById('history-bar');
+const $resBest  = document.getElementById('result-best');
+const $resTbody = document.getElementById('result-tbody');
+const $resName  = document.getElementById('res-name');
+const $saveStatus = document.getElementById('save-status');
+
+/* ════════════════════════════════════════
+   게임 상태
+════════════════════════════════════════ */
+let participant = { name: '', gender: '', age: 0 };
+let condition   = '';   // '40hz' | 'pink_noise'  (랜덤 배정)
+let gameResults = [];
+let gameStartTime = 0;
+let attemptNo = 1;
+let currentLevel = 3;
+
+/* ════════════════════════════════════════
+   화면 전환
+════════════════════════════════════════ */
+function showScreen(el) {
+  [$start, $game, $result].forEach(s => s.classList.add('hidden'));
+  el.classList.remove('hidden');
+}
+
+/* ════════════════════════════════════════
+   기록 바
+════════════════════════════════════════ */
+function refreshHistBar() {
+  $histBar.innerHTML = gameResults.map(r =>
+    `<span class="hist-chip ${r.success ? 'ok' : 'ng'}">${r.level}-D ${r.success ? '✓' : '✗'}</span>`
+  ).join('');
+}
+
+/* ════════════════════════════════════════
+   시퀀스 재생
+════════════════════════════════════════ */
+async function playSequence(seq) {
+  for (let i = 0; i < seq.length; i++) {
+    $card.textContent = seq[i];
+    $card.className   = 'show';
+    playStimulus(0.5);
+    await sleep(500);
+
+    $card.textContent = '';
+    $card.className   = 'blank';
+    await sleep(500);
+  }
+}
+
+/* ════════════════════════════════════════
+   입력 대기 & 자동 판정
+════════════════════════════════════════ */
+function waitForInput(seq) {
+  const n = seq.length;
+  $inputArea.innerHTML = '';
+  $inputArea.classList.remove('hidden');
+
+  const inputs = Array.from({ length: n }, () => {
+    const inp = document.createElement('input');
+    inp.type      = 'text';
+    inp.inputMode = 'numeric';
+    inp.maxLength = 1;
+    inp.className = 'digit-input';
+    inp.setAttribute('autocomplete', 'off');
+    $inputArea.appendChild(inp);
+    return inp;
+  });
+
+  requestAnimationFrame(() => inputs[0].focus());
+
+  return new Promise(resolve => {
+    function lockAll() { inputs.forEach(i => { i.readOnly = true; i.blur(); }); }
+
+    function checkComplete() {
+      if (inputs.some(i => i.value === '')) return;
+      lockAll();
+      const entered = inputs.map(i => parseInt(i.value, 10));
+      const correct = seq.every((d, i) => d === entered[i]);
+      inputs.forEach((inp, i) => inp.classList.add(seq[i] === entered[i] ? 'correct' : 'wrong'));
+      $status.textContent = correct ? '✓ 정답!' : '✗ 오답';
+      $status.className   = correct ? 'ok' : 'fail';
+      setTimeout(() => resolve({ correct, entered }), 900);
+    }
+
+    inputs.forEach((inp, idx) => {
+      inp.addEventListener('keydown', e => {
+        if (e.key === 'Backspace') {
+          if (inp.value === '' && idx > 0) { inputs[idx-1].value = ''; inputs[idx-1].focus(); }
+          else inp.value = '';
+          e.preventDefault();
+          return;
+        }
+        if (e.key.length === 1 && !/[0-9]/.test(e.key)) e.preventDefault();
+      });
+      inp.addEventListener('input', () => {
+        inp.value = inp.value.replace(/[^0-9]/g, '').slice(-1);
+        if (inp.value !== '') {
+          if (idx < n - 1) inputs[idx + 1].focus();
+          checkComplete();
+        }
+      });
+    });
+  });
+}
+
+/* ════════════════════════════════════════
+   레벨 실행
+════════════════════════════════════════ */
+async function runLevel(level) {
+  const seq = randDigitSeq(level);
+  $badge.textContent  = `${level}-DIGIT SPAN`;
+  $card.textContent   = '';
+  $card.className     = 'blank';
+  $status.textContent = '준비…';
+  $status.className   = '';
+  $inputArea.classList.add('hidden');
+  $inputArea.innerHTML = '';
+
+  await sleep(1200);
+
+  $status.textContent = '';
+  await playSequence(seq);
+
+  $status.textContent = '기억한 순서대로 입력하세요';
+  $status.className   = '';
+
+  const { correct, entered } = await waitForInput(seq);
+  gameResults.push({ level, success: correct, seq, entered });
+  refreshHistBar();
+  return correct;
+}
+
+/* ════════════════════════════════════════
+   서버에 결과 저장
+════════════════════════════════════════ */
+async function saveToServer() {
+  try {
+    $saveStatus.textContent = '저장 중…';
+    $saveStatus.className   = 'save-status';
+    const res = await fetch('/api/save', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name:         participant.name,
+        gender:       participant.gender,
+        age:          participant.age,
+        condition,
+        duration_sec: Math.round((Date.now() - gameStartTime) / 1000),
+        attempt_no:   attemptNo,
+        results:      gameResults
+      })
+    });
+    if (res.ok) {
+      const { id } = await res.json();
+      $saveStatus.textContent = `✓ 결과 저장 완료 (세션 #${id})`;
+      $saveStatus.className   = 'save-status saved';
+    } else {
+      throw new Error(`HTTP ${res.status}`);
+    }
+  } catch (e) {
+    console.warn('Save failed:', e);
+    $saveStatus.textContent = '⚠ 저장 실패 (서버 미연결)';
+    $saveStatus.className   = 'save-status error';
+  }
+}
+
+/* ════════════════════════════════════════
+   결과 화면
+════════════════════════════════════════ */
+async function showResult() {
+  const successes = gameResults.filter(r => r.success);
+  const best = successes.length > 0 ? Math.max(...successes.map(r => r.level)) : 0;
+
+  $resBest.textContent = best > 0 ? `${best}-Digit` : '–';
+
+  // 참가자 정보 + 조건 칩
+  $resName.textContent = `${participant.name} · ${participant.gender} · ${participant.age}세` +
+    (attemptNo > 1 ? ` · ${attemptNo}차 시도` : '');
+  // 결과 테이블
+  $resTbody.innerHTML = gameResults.map(r => {
+    const cls = r.success ? 'ok' : 'ng';
+    const txt = r.success ? '성공' : '실패';
+    return `<tr>
+      <td>${r.level}-Digit</td>
+      <td class="${cls}">${txt}</td>
+      <td>${r.entered.join(' ')}</td>
+      <td style="color:var(--muted)">${r.seq.join(' ')}</td>
+    </tr>`;
+  }).join('');
+
+  showScreen($result);
+  await saveToServer();
+}
+
+/* ════════════════════════════════════════
+   게임 루프
+════════════════════════════════════════ */
+async function runGame() {
+  gameResults   = [];
+  currentLevel  = 3;
+  gameStartTime = Date.now();
+  $histBar.innerHTML = '';
+  showScreen($game);
+
+  while (true) {
+    const ok = await runLevel(currentLevel);
+    if (!ok) break;
+    currentLevel++;
+  }
+
+  await sleep(400);
+  await showResult();
+}
+
+/* ════════════════════════════════════════
+   폼 유효성 검사 & 시작
+════════════════════════════════════════ */
+async function loadParticipantCount() {
+  const $el = document.getElementById('participant-count');
+  try {
+    const res  = await fetch('/api/count');
+    const { count } = await res.json();
+    $el.innerHTML = `누적 체험자 <span class="count-num">${count.toLocaleString()}</span> 명`;
+  } catch (_) {
+    $el.innerHTML = '';
+  }
+}
+loadParticipantCount();
+
+document.getElementById('btn-start').addEventListener('click', () => {
+  const name   = document.getElementById('inp-name').value.trim();
+  const gender = document.querySelector('input[name="gender"]:checked')?.value ?? '';
+  const age    = parseInt(document.getElementById('inp-age').value, 10);
+
+  if (!name)              return alert('이름을 입력해 주세요.');
+  if (!gender)            return alert('성별을 선택해 주세요.');
+  if (!age || age < 1)    return alert('나이를 올바르게 입력해 주세요.');
+
+  participant = { name, gender, age };
+
+  // 조건 랜덤 배정 (50 : 50)
+  condition = Math.random() < 0.5 ? '40hz' : 'pink_noise';
+
+  ensureAudioCtx();
+  runGame();
+});
+
+// 재도전: 인적 사항·자극 조건(condition) 유지, 차수만 증가
+// condition 은 START 버튼에서만 랜덤 배정되므로 여기서는 변경하지 않음
+document.getElementById('btn-retry').addEventListener('click', () => {
+  attemptNo++;
+  ensureAudioCtx();
+  runGame();
+});
+
+// 새 참가자: 모든 상태 초기화 후 시작 화면
+document.getElementById('btn-restart').addEventListener('click', () => {
+  attemptNo = 1;
+  document.getElementById('inp-name').value = '';
+  document.getElementById('inp-age').value  = '';
+  document.querySelectorAll('input[name="gender"]').forEach(r => r.checked = false);
+  showScreen($start);
+  loadParticipantCount();
+});
+</script>
+</body>
+</html>

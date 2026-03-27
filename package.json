@@ -1,0 +1,13 @@
+{
+  "name": "digit-span-test",
+  "version": "1.0.0",
+  "description": "Digit Span Test with 40Hz / Pink Noise randomization",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.0",
+    "googleapis": "^144.0.0"
+  }
+}

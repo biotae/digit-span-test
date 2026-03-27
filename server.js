@@ -1,0 +1,308 @@
+const { DatabaseSync } = require('node:sqlite');
+const { google }       = require('googleapis');
+const express          = require('express');
+const path             = require('path');
+const fs               = require('fs');
+
+const app  = express();
+const PORT = process.env.PORT || 3000;
+
+/* ════════════════════════════════════════
+   SQLite 설정
+════════════════════════════════════════ */
+const DB_PATH = process.env.DB_PATH || path.join(__dirname, 'data.db');
+const db = new DatabaseSync(DB_PATH);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS sessions (
+    id                 INTEGER PRIMARY KEY AUTOINCREMENT,
+    name               TEXT    NOT NULL,
+    gender             TEXT    NOT NULL,
+    age                INTEGER NOT NULL,
+    condition          TEXT    NOT NULL,
+    max_digits         INTEGER NOT NULL,
+    total_levels       INTEGER NOT NULL,
+    successful_levels  INTEGER NOT NULL,
+    duration_sec       REAL,
+    attempt_no         INTEGER NOT NULL DEFAULT 1,
+    results            TEXT    NOT NULL,
+    created_at         DATETIME DEFAULT CURRENT_TIMESTAMP
+  )
+`);
+
+// 기존 DB에 컬럼이 없을 경우 추가 (마이그레이션)
+try { db.exec('ALTER TABLE sessions ADD COLUMN duration_sec REAL'); } catch (_) {}
+try { db.exec('ALTER TABLE sessions ADD COLUMN attempt_no INTEGER NOT NULL DEFAULT 1'); } catch (_) {}
+
+const insertStmt = db.prepare(`
+  INSERT INTO sessions
+    (name, gender, age, condition, max_digits, total_levels, successful_levels, duration_sec, attempt_no, results)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+`);
+const allStmt = db.prepare('SELECT * FROM sessions ORDER BY created_at DESC');
+const allAsc  = db.prepare('SELECT * FROM sessions ORDER BY created_at ASC');
+
+/* ════════════════════════════════════════
+   Google Sheets 설정
+════════════════════════════════════════ */
+const CREDS_PATH  = path.join(__dirname, 'google-credentials.json');
+const CONFIG_PATH = path.join(__dirname, 'sheets.config.json');
+
+let sheetsClient     = null;
+let SPREADSHEET_ID   = '';
+
+// sheets.config.json 에서 스프레드시트 ID 로드
+if (fs.existsSync(CONFIG_PATH)) {
+  try {
+    const cfg = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8'));
+    SPREADSHEET_ID = cfg.spreadsheetId || '';
+  } catch (e) {
+    console.warn('sheets.config.json 파싱 오류:', e.message);
+  }
+}
+
+async function initGoogleSheets() {
+  if (!fs.existsSync(CREDS_PATH)) return;
+  if (!SPREADSHEET_ID)             return;
+
+  try {
+    const auth = new google.auth.GoogleAuth({
+      keyFile: CREDS_PATH,
+      scopes:  ['https://www.googleapis.com/auth/spreadsheets'],
+    });
+    const client = await auth.getClient();
+    sheetsClient = google.sheets({ version: 'v4', auth: client });
+
+    // 헤더 행이 없으면 추가
+    const check = await sheetsClient.spreadsheets.values.get({
+      spreadsheetId: SPREADSHEET_ID,
+      range: 'Sheet1!A1:J1',
+    });
+    if (!check.data.values || check.data.values.length === 0) {
+      await sheetsClient.spreadsheets.values.append({
+        spreadsheetId:    SPREADSHEET_ID,
+        range:            'Sheet1!A1',
+        valueInputOption: 'RAW',
+        resource: { values: [[
+          'ID', '이름', '성별', '나이', '조건',
+          '최고 Digit', '성공 레벨', '전체 레벨', '소요 시간', '시도 차수', '일시'
+        ]] }
+      });
+    }
+
+    console.log('✓ Google Sheets 연결 완료');
+    console.log(`  시트 ID: ${SPREADSHEET_ID}`);
+  } catch (e) {
+    console.warn('⚠ Google Sheets 연결 실패:', e.message);
+    sheetsClient = null;
+  }
+}
+
+async function appendToSheet(rowData) {
+  if (!sheetsClient || !SPREADSHEET_ID) return;
+  try {
+    await sheetsClient.spreadsheets.values.append({
+      spreadsheetId:    SPREADSHEET_ID,
+      range:            'Sheet1!A1',
+      valueInputOption: 'RAW',
+      insertDataOption: 'INSERT_ROWS',
+      resource: { values: [rowData] },
+    });
+  } catch (e) {
+    console.warn('Sheet append 오류:', e.message);
+  }
+}
+
+/* ════════════════════════════════════════
+   Express 미들웨어
+════════════════════════════════════════ */
+app.use(express.json());
+app.use(express.static(__dirname));
+
+/* ════════════════════════════════════════
+   API: 세션 저장
+════════════════════════════════════════ */
+app.post('/api/save', async (req, res) => {
+  try {
+    const { name, gender, age, condition, duration_sec, attempt_no, results } = req.body;
+    if (!name || !gender || !age || !condition || !Array.isArray(results)) {
+      return res.status(400).json({ ok: false, error: '필수 항목 누락' });
+    }
+
+    const successes  = results.filter(r => r.success);
+    const max_digits = successes.length > 0
+      ? Math.max(...successes.map(r => r.level)) : 0;
+    const dur = typeof duration_sec === 'number' ? Math.round(duration_sec) : null;
+
+    // SQLite 저장
+    const info = insertStmt.run(
+      name.trim(), gender, parseInt(age, 10), condition,
+      max_digits, results.length, successes.length,
+      dur,
+      parseInt(attempt_no, 10) || 1,
+      JSON.stringify(results)
+    );
+    const id = info.lastInsertRowid;
+
+    // 소요 시간 표시용 문자열
+    const durLabel = dur != null
+      ? `${Math.floor(dur / 60)}분 ${dur % 60}초`
+      : '–';
+
+    // Google Sheets 저장 (비동기, 응답 블로킹 안 함)
+    appendToSheet([
+      id, name.trim(), gender, parseInt(age, 10),
+      condition === '40hz' ? '40 Hz 스퀘어 웨이브' : '핑크 노이즈',
+      max_digits > 0 ? `${max_digits}-Digit` : '–',
+      successes.length, results.length,
+      durLabel,
+      parseInt(attempt_no, 10) || 1,
+      new Date().toLocaleString('ko-KR')
+    ]).catch(() => {});
+
+    res.json({ ok: true, id });
+  } catch (e) {
+    console.error('Save error:', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+/* ════════════════════════════════════════
+   API: 전체 세션 JSON
+════════════════════════════════════════ */
+app.get('/api/count', (req, res) => {
+  const row = db.prepare('SELECT COUNT(*) as n FROM sessions').get();
+  res.json({ count: row.n });
+});
+
+app.get('/api/sessions', (req, res) => {
+  res.json(allStmt.all());
+});
+
+/* ════════════════════════════════════════
+   API: CSV 다운로드
+════════════════════════════════════════ */
+app.get('/api/export.csv', (req, res) => {
+  const rows    = allAsc.all();
+  const headers = ['id','name','gender','age','condition','max_digits',
+                   'total_levels','successful_levels','duration_sec','attempt_no','created_at'];
+  const escape  = v =>
+    (typeof v === 'string' && /[,"\n]/.test(v)) ? `"${v.replace(/"/g,'""')}"` : (v ?? '');
+  const csv = [
+    headers.join(','),
+    ...rows.map(r => headers.map(h => escape(r[h])).join(','))
+  ].join('\n');
+
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', 'attachment; filename="digit-span-results.csv"');
+  res.send('\uFEFF' + csv);
+});
+
+/* ════════════════════════════════════════
+   관리자 페이지
+════════════════════════════════════════ */
+app.get('/admin', (req, res) => {
+  const rows   = allStmt.all();
+  const total  = rows.length;
+  const n40    = rows.filter(r => r.condition === '40hz').length;
+  const nPink  = rows.filter(r => r.condition === 'pink_noise').length;
+  const avgMax = total > 0
+    ? (rows.reduce((s, r) => s + r.max_digits, 0) / total).toFixed(2) : '–';
+
+  const condBadge = c => c === '40hz'
+    ? '<span class="c40">40 Hz</span>'
+    : '<span class="cpink">핑크 노이즈</span>';
+
+  const fmtDur = sec => sec != null
+    ? `${Math.floor(sec / 60)}분 ${sec % 60}초`
+    : '–';
+
+  const tableRows = rows.map(r => `
+    <tr>
+      <td>${r.id}</td><td>${r.name}</td><td>${r.gender}</td><td>${r.age}</td>
+      <td>${condBadge(r.condition)}</td>
+      <td><b>${r.max_digits > 0 ? r.max_digits + '-Digit' : '–'}</b></td>
+      <td>${r.successful_levels} / ${r.total_levels}</td>
+      <td>${fmtDur(r.duration_sec)}</td>
+      <td style="text-align:center">${r.attempt_no ?? 1}</td>
+      <td>${new Date(r.created_at).toLocaleString('ko-KR')}</td>
+    </tr>`).join('') ||
+    '<tr><td colspan="9" style="text-align:center;color:#555;padding:2rem">데이터 없음</td></tr>';
+
+  const sheetLink = SPREADSHEET_ID
+    ? `<a class="btn btn-sheet" href="https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}" target="_blank">Google 시트 열기</a>`
+    : `<span style="color:#f4a45e;font-size:.82rem">⚠ Google Sheets 미연결 — sheets.config.json 확인</span>`;
+
+  res.send(`<!DOCTYPE html>
+<html lang="ko"><head>
+  <meta charset="UTF-8"/><title>Digit Span — 관리자</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:system-ui;background:#0d0d1a;color:#e8e8f0;padding:2rem}
+    h1{font-size:1.4rem;letter-spacing:.06em;margin-bottom:1.5rem}
+    .stats{display:flex;gap:1rem;margin-bottom:1.5rem;flex-wrap:wrap}
+    .stat{background:#13132b;border:1px solid #222244;border-radius:12px;padding:.8rem 1.4rem;min-width:110px}
+    .stat-val{font-size:1.7rem;font-weight:900;line-height:1}
+    .stat-lbl{font-size:.7rem;color:#6b6b90;letter-spacing:.08em;text-transform:uppercase;margin-top:.2rem}
+    .actions{display:flex;gap:.8rem;margin-bottom:1.2rem;flex-wrap:wrap;align-items:center}
+    .btn{border:none;border-radius:8px;padding:.5rem 1.2rem;cursor:pointer;font-weight:700;font-size:.88rem;text-decoration:none;display:inline-block}
+    .btn-csv{background:#4ade80;color:#0d1a10}
+    .btn-sheet{background:#34a853;color:#fff}
+    .btn-ref{background:#5e81f4;color:#fff}
+    .btn-back{background:#222244;color:#e8e8f0}
+    table{border-collapse:collapse;width:100%;font-size:.88rem}
+    th{text-align:left;padding:.4rem .7rem;border-bottom:2px solid #1e1e3a;color:#6b6b90;font-size:.7rem;letter-spacing:.1em;text-transform:uppercase}
+    td{padding:.45rem .7rem;border-bottom:1px solid #1a1a30}
+    tr:hover td{background:#13132b}
+    .c40{color:#5e81f4;font-weight:700}.cpink{color:#f4a45e;font-weight:700}
+    .count{color:#6b6b90;font-size:.82rem;margin-bottom:.8rem}
+  </style>
+</head><body>
+<h1>Digit Span Test — 결과 데이터</h1>
+<div class="stats">
+  <div class="stat"><div class="stat-val">${total}</div><div class="stat-lbl">총 세션</div></div>
+  <div class="stat"><div class="stat-val" style="color:#5e81f4">${n40}</div><div class="stat-lbl">40 Hz 조건</div></div>
+  <div class="stat"><div class="stat-val" style="color:#f4a45e">${nPink}</div><div class="stat-lbl">핑크 노이즈</div></div>
+  <div class="stat"><div class="stat-val">${avgMax}</div><div class="stat-lbl">평균 최고 Digit</div></div>
+</div>
+<div class="actions">
+  <a class="btn btn-csv" href="/api/export.csv">CSV 다운로드</a>
+  ${sheetLink}
+  <button class="btn btn-ref" onclick="location.reload()">새로고침</button>
+  <a class="btn btn-back" href="/">← 테스트</a>
+</div>
+<p class="count">총 ${total}개 세션</p>
+<table>
+  <thead><tr><th>#</th><th>이름</th><th>성별</th><th>나이</th><th>조건</th><th>최고</th><th>성공/전체</th><th>소요 시간</th><th>차수</th><th>일시</th></tr></thead>
+  <tbody>${tableRows}</tbody>
+</table>
+</body></html>`);
+});
+
+/* ════════════════════════════════════════
+   서버 시작
+════════════════════════════════════════ */
+initGoogleSheets().then(() => {
+  app.listen(PORT, () => {
+    console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('  Digit Span Test 서버 실행 중');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log(`  테스트  →  http://localhost:${PORT}`);
+    console.log(`  관리자  →  http://localhost:${PORT}/admin`);
+    console.log(`  CSV     →  http://localhost:${PORT}/api/export.csv`);
+
+    if (!fs.existsSync(CREDS_PATH) || !SPREADSHEET_ID) {
+      console.log('\n  ── Google Sheets 연결 방법 ──────────────');
+      console.log('  1. https://console.cloud.google.com 접속');
+      console.log('  2. 프로젝트 생성 → "Google Sheets API" 활성화');
+      console.log('  3. 서비스 계정 생성 → JSON 키 다운로드');
+      console.log('     → 파일명을 google-credentials.json 으로 저장');
+      console.log('  4. Google Sheet 생성 → 서비스 계정 이메일 공유(편집자)');
+      console.log('  5. sheets.config.json 의 spreadsheetId 에 시트 ID 입력');
+      console.log('     (시트 URL: docs.google.com/spreadsheets/d/[ID]/edit)');
+      console.log('  ─────────────────────────────────────────');
+    }
+
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+  });
+});
