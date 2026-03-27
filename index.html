@@ -56,6 +56,33 @@
     }
 
     /* ══════════════════════════════
+       언어 선택
+    ══════════════════════════════ */
+    .lang-switcher {
+      display: flex;
+      gap: .4rem;
+      justify-content: flex-end;
+      margin-bottom: 1.2rem;
+    }
+    .lang-btn {
+      background: transparent;
+      border: 1px solid rgba(94,129,244,.25);
+      border-radius: 50px;
+      color: var(--muted);
+      font-size: .78rem;
+      font-weight: 700;
+      padding: .25rem .85rem;
+      cursor: pointer;
+      transition: all .15s;
+      letter-spacing: .06em;
+    }
+    .lang-btn.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+
+    /* ══════════════════════════════
        시작 / 참가자 입력 화면
     ══════════════════════════════ */
     #screen-start {
@@ -301,8 +328,6 @@
       border: 1px solid rgba(255,255,255,.1);
       color: var(--muted);
     }
-    .meta-chip.cond-40hz      { color: var(--accent); border-color: rgba(94,129,244,.35); background: rgba(94,129,244,.1); }
-    .meta-chip.cond-pink_noise{ color: var(--pink);   border-color: rgba(244,164,94,.35); background: rgba(244,164,94,.1); }
 
     .best-label { color: var(--muted); font-size: .82rem; margin-bottom: .2rem; }
     .best-value {
@@ -384,34 +409,39 @@
 
 <!-- ══ 시작 / 참가자 정보 입력 화면 ══ -->
 <div id="screen-start">
+  <div class="lang-switcher">
+    <button class="lang-btn active" id="lang-ko">한국어</button>
+    <button class="lang-btn"        id="lang-en">English</button>
+  </div>
+
   <h1>DIGIT SPAN TEST</h1>
-  <p class="subtitle">화면에 나타나는 숫자들을 순서대로 기억하여 입력하세요.<br>처음에 3개로 시작해서 성공하면 계속 갯수가 늘어납니다.</p>
+  <p class="subtitle" id="txt-subtitle"></p>
   <div id="participant-count" class="participant-count"></div>
 
   <div class="form-card">
     <div class="field">
-      <label>이름</label>
-      <input type="text" id="inp-name" placeholder="홍길동" autocomplete="off" />
+      <label id="lbl-name"></label>
+      <input type="text" id="inp-name" autocomplete="off" />
     </div>
     <div class="field">
-      <label>성별</label>
+      <label id="lbl-gender"></label>
       <div class="gender-row">
         <input type="radio" name="gender" id="g-male"   value="남성" />
-        <label for="g-male">남성</label>
+        <label for="g-male"   id="lbl-g-male"></label>
         <input type="radio" name="gender" id="g-female" value="여성" />
-        <label for="g-female">여성</label>
+        <label for="g-female" id="lbl-g-female"></label>
         <input type="radio" name="gender" id="g-other"  value="기타" />
-        <label for="g-other">기타</label>
+        <label for="g-other"  id="lbl-g-other"></label>
       </div>
     </div>
     <div class="field">
-      <label>나이</label>
-      <input type="number" id="inp-age" placeholder="25" min="1" max="120" autocomplete="off" />
+      <label id="lbl-age"></label>
+      <input type="number" id="inp-age" min="1" max="120" autocomplete="off" />
     </div>
   </div>
 
   <button class="btn btn-primary" id="btn-start">START</button>
-  <p class="copyright">© 2026 Tae Kim & Seungyeong Yu. All rights reserved.</p>
+  <p class="copyright">© 2026 Tae Kim &amp; Seungyeong Yu. All rights reserved.</p>
 </div>
 
 <!-- ══ 게임 화면 ══ -->
@@ -419,39 +449,146 @@
   <div id="history-bar"></div>
   <div id="level-badge">3-DIGIT SPAN</div>
   <div id="digit-card" class="blank"></div>
-  <div id="status-msg">잠시 후 시작합니다…</div>
+  <div id="status-msg"></div>
   <div id="input-area" class="hidden"></div>
-  <button id="btn-confirm" class="btn btn-confirm hidden" disabled>확인</button>
+  <button id="btn-confirm" class="btn btn-confirm hidden" disabled></button>
 </div>
 
 <!-- ══ 결과 화면 ══ -->
 <div id="screen-result" class="hidden">
   <h2>GAME OVER</h2>
-  <p class="goodbye">수고하셨습니다</p>
+  <p class="goodbye" id="txt-goodbye"></p>
 
   <div class="result-meta">
     <span class="meta-chip" id="res-name"></span>
   </div>
 
-  <div class="best-label">최고 달성</div>
+  <div class="best-label" id="txt-best-label"></div>
   <div class="best-value" id="result-best">–</div>
 
   <table id="result-table">
     <thead>
-      <tr><th>레벨</th><th>결과</th><th>입력</th><th>정답</th></tr>
+      <tr>
+        <th id="th-level"></th>
+        <th id="th-result"></th>
+        <th id="th-entered"></th>
+        <th id="th-answer"></th>
+      </tr>
     </thead>
     <tbody id="result-tbody"></tbody>
   </table>
 
   <p class="save-status" id="save-status"></p>
-  <p class="retry-prompt">재도전 하시겠습니까?</p>
+  <p class="retry-prompt" id="txt-retry-prompt"></p>
   <div class="retry-buttons">
-    <button class="btn btn-retry"    id="btn-retry">재도전</button>
-    <button class="btn btn-newuser"  id="btn-restart">새 참가자</button>
+    <button class="btn btn-retry"   id="btn-retry"></button>
+    <button class="btn btn-newuser" id="btn-restart"></button>
   </div>
 </div>
 
 <script>
+/* ════════════════════════════════════════
+   번역 (i18n)
+════════════════════════════════════════ */
+const T = {
+  ko: {
+    subtitle:       '화면에 나타나는 숫자들을 순서대로 기억하여 입력하세요.<br>처음에 3개로 시작해서 성공하면 계속 갯수가 늘어납니다.',
+    countLabel:     n => `누적 체험자 <span class="count-num">${n.toLocaleString()}</span> 명`,
+    labelName:      '이름',      placeholderName:   '홍길동',
+    labelGender:    '성별',
+    gMale: '남성', gFemale: '여성', gOther: '기타',
+    labelAge:       '나이',      placeholderAge:    '25',
+    ready:          '준비…',
+    inputPrompt:    '기억한 순서대로 입력하세요',
+    correct:        '✓ 정답!',   wrong:             '✗ 오답',
+    btnConfirm:     '확인',
+    goodbye:        '수고하셨습니다',
+    bestLabel:      '최고 달성',
+    thLevel: '레벨', thResult: '결과', thEntered: '입력', thAnswer: '정답',
+    saving:         '저장 중…',
+    saved:          id => `✓ 결과 저장 완료 (세션 #${id})`,
+    saveError:      '⚠ 저장 실패 (서버 미연결)',
+    retryPrompt:    '재도전 하시겠습니까?',
+    btnRetry:       '재도전',
+    btnNewUser:     '새 참가자',
+    alertName:      '이름을 입력해 주세요.',
+    alertGender:    '성별을 선택해 주세요.',
+    alertAge:       '나이를 올바르게 입력해 주세요.',
+    resultOk:       '성공',      resultNg:          '실패',
+    metaAge:        age => `${age}세`,
+    metaAttempt:    n => n > 1 ? ` · ${n}차 시도` : '',
+  },
+  en: {
+    subtitle:       'Memorize the digits shown on the screen and enter them in order.<br>Start with 3 digits — each success adds one more.',
+    countLabel:     n => `<span class="count-num">${n.toLocaleString()}</span> participants so far`,
+    labelName:      'Name',      placeholderName:   'Jane Doe',
+    labelGender:    'Gender',
+    gMale: 'Male', gFemale: 'Female', gOther: 'Other',
+    labelAge:       'Age',       placeholderAge:    '25',
+    ready:          'Get ready…',
+    inputPrompt:    'Enter the digits in order',
+    correct:        '✓ Correct!', wrong:            '✗ Wrong',
+    btnConfirm:     'Confirm',
+    goodbye:        'Thank you for participating',
+    bestLabel:      'Best Result',
+    thLevel: 'Level', thResult: 'Result', thEntered: 'Entered', thAnswer: 'Answer',
+    saving:         'Saving…',
+    saved:          id => `✓ Saved (Session #${id})`,
+    saveError:      '⚠ Save failed (server unavailable)',
+    retryPrompt:    'Would you like to try again?',
+    btnRetry:       'Try Again',
+    btnNewUser:     'New Participant',
+    alertName:      'Please enter your name.',
+    alertGender:    'Please select your gender.',
+    alertAge:       'Please enter a valid age.',
+    resultOk:       'Pass',      resultNg:          'Fail',
+    metaAge:        age => `${age} y/o`,
+    metaAttempt:    n => n > 1 ? ` · Attempt ${n}` : '',
+  }
+};
+
+let lang = 'ko';
+
+function applyLang() {
+  const t = T[lang];
+  document.documentElement.lang = lang;
+
+  // 언어 버튼
+  document.getElementById('lang-ko').classList.toggle('active', lang === 'ko');
+  document.getElementById('lang-en').classList.toggle('active', lang === 'en');
+
+  // 시작 화면
+  document.getElementById('txt-subtitle').innerHTML = t.subtitle;
+  document.getElementById('lbl-name').textContent   = t.labelName;
+  document.getElementById('inp-name').placeholder   = t.placeholderName;
+  document.getElementById('lbl-gender').textContent = t.labelGender;
+  document.getElementById('lbl-g-male').textContent   = t.gMale;
+  document.getElementById('lbl-g-female').textContent = t.gFemale;
+  document.getElementById('lbl-g-other').textContent  = t.gOther;
+  document.getElementById('lbl-age').textContent    = t.labelAge;
+  document.getElementById('inp-age').placeholder    = t.placeholderAge;
+
+  // 게임 화면
+  document.getElementById('btn-confirm').textContent = t.btnConfirm;
+
+  // 결과 화면
+  document.getElementById('txt-goodbye').textContent     = t.goodbye;
+  document.getElementById('txt-best-label').textContent  = t.bestLabel;
+  document.getElementById('th-level').textContent        = t.thLevel;
+  document.getElementById('th-result').textContent       = t.thResult;
+  document.getElementById('th-entered').textContent      = t.thEntered;
+  document.getElementById('th-answer').textContent       = t.thAnswer;
+  document.getElementById('txt-retry-prompt').textContent = t.retryPrompt;
+  document.getElementById('btn-retry').textContent       = t.btnRetry;
+  document.getElementById('btn-restart').textContent     = t.btnNewUser;
+
+  // 참가자 카운트 재적용 (이미 로드된 경우)
+  if (_lastCount !== null) renderCount(_lastCount);
+}
+
+document.getElementById('lang-ko').addEventListener('click', () => { lang = 'ko'; applyLang(); });
+document.getElementById('lang-en').addEventListener('click', () => { lang = 'en'; applyLang(); });
+
 /* ════════════════════════════════════════
    오디오 유틸 (파일 재생)
 ════════════════════════════════════════ */
@@ -466,7 +603,6 @@ let _activeAudio   = null;
 let _activeTimeout = null;
 
 function playStimulus(durationSec) {
-  // 이전 재생 중단
   if (_activeAudio) { _activeAudio.pause(); _activeAudio.currentTime = 0; }
   if (_activeTimeout) clearTimeout(_activeTimeout);
 
@@ -494,7 +630,7 @@ function randDigitSeq(len) {
   for (let i = 0; i < len; i++) {
     let d;
     do { d = digits[Math.floor(Math.random() * digits.length)]; }
-    while (d === seq[seq.length - 1]); // 연속 중복 제외
+    while (d === seq[seq.length - 1]);
     seq.push(d);
   }
   return seq;
@@ -503,25 +639,25 @@ function randDigitSeq(len) {
 /* ════════════════════════════════════════
    DOM
 ════════════════════════════════════════ */
-const $start    = document.getElementById('screen-start');
-const $game     = document.getElementById('screen-game');
-const $result   = document.getElementById('screen-result');
-const $badge    = document.getElementById('level-badge');
-const $card     = document.getElementById('digit-card');
-const $status   = document.getElementById('status-msg');
+const $start      = document.getElementById('screen-start');
+const $game       = document.getElementById('screen-game');
+const $result     = document.getElementById('screen-result');
+const $badge      = document.getElementById('level-badge');
+const $card       = document.getElementById('digit-card');
+const $status     = document.getElementById('status-msg');
 const $inputArea  = document.getElementById('input-area');
 const $btnConfirm = document.getElementById('btn-confirm');
-const $histBar  = document.getElementById('history-bar');
-const $resBest  = document.getElementById('result-best');
-const $resTbody = document.getElementById('result-tbody');
-const $resName  = document.getElementById('res-name');
+const $histBar    = document.getElementById('history-bar');
+const $resBest    = document.getElementById('result-best');
+const $resTbody   = document.getElementById('result-tbody');
+const $resName    = document.getElementById('res-name');
 const $saveStatus = document.getElementById('save-status');
 
 /* ════════════════════════════════════════
    게임 상태
 ════════════════════════════════════════ */
 let participant = { name: '', gender: '', age: 0 };
-let condition   = '';   // '40hz' | 'pink_noise'  (랜덤 배정)
+let condition   = '';
 let gameResults = [];
 let gameStartTime = 0;
 let attemptNo = 1;
@@ -549,13 +685,11 @@ function refreshHistBar() {
 ════════════════════════════════════════ */
 async function playSequence(seq) {
   for (let i = 0; i < seq.length; i++) {
-    // 소리(0.5초)와 디스플레이(1초) 동시 시작
     $card.textContent = seq[i];
     $card.className   = 'show';
     playStimulus(0.5);
-    await sleep(1000);  // 디스플레이 1초
+    await sleep(1000);
 
-    // 다음 숫자 전 0.2초 pause
     $card.textContent = '';
     $card.className   = 'blank';
     await sleep(200);
@@ -567,10 +701,10 @@ async function playSequence(seq) {
 ════════════════════════════════════════ */
 function waitForInput(seq) {
   const n = seq.length;
+  const t = T[lang];
   $inputArea.innerHTML = '';
   $inputArea.classList.remove('hidden');
 
-  // 확인 버튼 초기화 (비활성)
   $btnConfirm.classList.remove('hidden');
   $btnConfirm.disabled = true;
 
@@ -591,7 +725,6 @@ function waitForInput(seq) {
     function lockAll() { inputs.forEach(i => { i.readOnly = true; i.blur(); }); }
 
     function updateConfirmBtn() {
-      // 모든 칸이 채워졌을 때만 활성화
       $btnConfirm.disabled = inputs.some(i => i.value === '');
     }
 
@@ -603,7 +736,7 @@ function waitForInput(seq) {
       const entered = inputs.map(i => parseInt(i.value, 10));
       const correct = seq.every((d, i) => d === entered[i]);
       inputs.forEach((inp, i) => inp.classList.add(seq[i] === entered[i] ? 'correct' : 'wrong'));
-      $status.textContent = correct ? '✓ 정답!' : '✗ 오답';
+      $status.textContent = correct ? t.correct : t.wrong;
       $status.className   = correct ? 'ok' : 'fail';
       setTimeout(() => resolve({ correct, entered }), 900);
     }
@@ -636,10 +769,11 @@ function waitForInput(seq) {
 ════════════════════════════════════════ */
 async function runLevel(level) {
   const seq = randDigitSeq(level);
+  const t   = T[lang];
   $badge.textContent  = `${level}-DIGIT SPAN`;
   $card.textContent   = '';
   $card.className     = 'blank';
-  $status.textContent = '준비…';
+  $status.textContent = t.ready;
   $status.className   = '';
   $inputArea.classList.add('hidden');
   $inputArea.innerHTML = '';
@@ -651,7 +785,7 @@ async function runLevel(level) {
   $status.textContent = '';
   await playSequence(seq);
 
-  $status.textContent = '기억한 순서대로 입력하세요';
+  $status.textContent = t.inputPrompt;
   $status.className   = '';
 
   const { correct, entered } = await waitForInput(seq);
@@ -664,8 +798,9 @@ async function runLevel(level) {
    서버에 결과 저장
 ════════════════════════════════════════ */
 async function saveToServer() {
+  const t = T[lang];
   try {
-    $saveStatus.textContent = '저장 중…';
+    $saveStatus.textContent = t.saving;
     $saveStatus.className   = 'save-status';
     const res = await fetch('/api/save', {
       method: 'POST',
@@ -682,14 +817,14 @@ async function saveToServer() {
     });
     if (res.ok) {
       const { id } = await res.json();
-      $saveStatus.textContent = `✓ 결과 저장 완료 (세션 #${id})`;
+      $saveStatus.textContent = t.saved(id);
       $saveStatus.className   = 'save-status saved';
     } else {
       throw new Error(`HTTP ${res.status}`);
     }
   } catch (e) {
     console.warn('Save failed:', e);
-    $saveStatus.textContent = '⚠ 저장 실패 (서버 미연결)';
+    $saveStatus.textContent = t.saveError;
     $saveStatus.className   = 'save-status error';
   }
 }
@@ -698,18 +833,19 @@ async function saveToServer() {
    결과 화면
 ════════════════════════════════════════ */
 async function showResult() {
+  const t = T[lang];
   const successes = gameResults.filter(r => r.success);
   const best = successes.length > 0 ? Math.max(...successes.map(r => r.level)) : 0;
 
   $resBest.textContent = best > 0 ? `${best}-Digit` : '–';
 
-  // 참가자 정보 + 조건 칩
-  $resName.textContent = `${participant.name} · ${participant.gender} · ${participant.age}세` +
-    (attemptNo > 1 ? ` · ${attemptNo}차 시도` : '');
-  // 결과 테이블
+  $resName.textContent =
+    `${participant.name} · ${participant.gender} · ${t.metaAge(participant.age)}` +
+    t.metaAttempt(attemptNo);
+
   $resTbody.innerHTML = gameResults.map(r => {
     const cls = r.success ? 'ok' : 'ng';
-    const txt = r.success ? '성공' : '실패';
+    const txt = r.success ? t.resultOk : t.resultNg;
     return `<tr>
       <td>${r.level}-Digit</td>
       <td class="${cls}">${txt}</td>
@@ -743,48 +879,51 @@ async function runGame() {
 }
 
 /* ════════════════════════════════════════
-   폼 유효성 검사 & 시작
+   참가자 카운트
 ════════════════════════════════════════ */
+let _lastCount = null;
+
+function renderCount(n) {
+  _lastCount = n;
+  document.getElementById('participant-count').innerHTML = T[lang].countLabel(n);
+}
+
 async function loadParticipantCount() {
-  const $el = document.getElementById('participant-count');
   try {
-    const res  = await fetch('/api/count');
+    const res = await fetch('/api/count');
     const { count } = await res.json();
-    $el.innerHTML = `누적 체험자 <span class="count-num">${count.toLocaleString()}</span> 명`;
+    renderCount(count);
   } catch (_) {
-    $el.innerHTML = '';
+    document.getElementById('participant-count').innerHTML = '';
   }
 }
-loadParticipantCount();
 
+/* ════════════════════════════════════════
+   이벤트 핸들러
+════════════════════════════════════════ */
 document.getElementById('btn-start').addEventListener('click', () => {
+  const t      = T[lang];
   const name   = document.getElementById('inp-name').value.trim();
   const gender = document.querySelector('input[name="gender"]:checked')?.value ?? '';
   const age    = parseInt(document.getElementById('inp-age').value, 10);
 
-  if (!name)              return alert('이름을 입력해 주세요.');
-  if (!gender)            return alert('성별을 선택해 주세요.');
-  if (!age || age < 1)    return alert('나이를 올바르게 입력해 주세요.');
+  if (!name)           return alert(t.alertName);
+  if (!gender)         return alert(t.alertGender);
+  if (!age || age < 1) return alert(t.alertAge);
 
   participant = { name, gender, age };
 
-  // 조건 랜덤 배정 (1/3 : 1/3 : 1/3)
   const conditions = ['8hz', '40hz', 'pink_noise'];
   condition = conditions[Math.floor(Math.random() * 3)];
 
-  ensureAudioCtx();
   runGame();
 });
 
-// 재도전: 인적 사항·자극 조건(condition) 유지, 차수만 증가
-// condition 은 START 버튼에서만 랜덤 배정되므로 여기서는 변경하지 않음
 document.getElementById('btn-retry').addEventListener('click', () => {
   attemptNo++;
-  ensureAudioCtx();
   runGame();
 });
 
-// 새 참가자: 모든 상태 초기화 후 시작 화면
 document.getElementById('btn-restart').addEventListener('click', () => {
   attemptNo = 1;
   document.getElementById('inp-name').value = '';
@@ -793,6 +932,12 @@ document.getElementById('btn-restart').addEventListener('click', () => {
   showScreen($start);
   loadParticipantCount();
 });
+
+/* ════════════════════════════════════════
+   초기화
+════════════════════════════════════════ */
+applyLang();
+loadParticipantCount();
 </script>
 </body>
 </html>
