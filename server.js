@@ -177,6 +177,14 @@ app.post('/api/save', async (req, res) => {
 /* ════════════════════════════════════════
    API: 전체 세션 JSON
 ════════════════════════════════════════ */
+app.get('/api/status', (req, res) => {
+  res.json({
+    sheets_connected: !!sheetsClient,
+    spreadsheet_id_set: !!SPREADSHEET_ID,
+    has_env_creds: !!process.env.GOOGLE_CREDENTIALS_JSON,
+  });
+});
+
 app.get('/api/count', async (req, res) => {
   // Google Sheets가 연결되어 있으면 시트 행 수로 반환 (재배포에도 유지)
   // 연결 안 된 경우 SQLite 카운트로 fallback
