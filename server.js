@@ -108,6 +108,15 @@ async function initGoogleSheets() {
 async function appendToSheet(rowData) {
   if (!sheetsClient || !SPREADSHEET_ID) return;
   try {
+    // Sheets 행 수로 순차 ID 계산 (SQLite ID 대신 사용 — 재배포 후에도 연속)
+    const countRes = await sheetsClient.spreadsheets.values.get({
+      spreadsheetId: SPREADSHEET_ID,
+      range: 'Sheet1!A:A',
+    });
+    const totalRows = (countRes.data.values || []).length; // 헤더 포함
+    const nextId = totalRows; // 헤더=1, 첫 데이터=ID 1, 두 번째=ID 2, ...
+    rowData[0] = nextId;
+
     await sheetsClient.spreadsheets.values.append({
       spreadsheetId:    SPREADSHEET_ID,
       range:            'Sheet1!A1',
