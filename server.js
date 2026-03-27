@@ -159,7 +159,7 @@ app.post('/api/save', async (req, res) => {
     // Google Sheets 저장 (비동기, 응답 블로킹 안 함)
     appendToSheet([
       id, name.trim(), gender, parseInt(age, 10),
-      condition === '40hz' ? '40 Hz 스퀘어 웨이브' : '핑크 노이즈',
+      condition === '8hz' ? '8Hz' : condition === '40hz' ? '40Hz' : '핑크',
       max_digits > 0 ? `${max_digits}-Digit` : '–',
       successes.length, results.length,
       durLabel,
@@ -216,9 +216,10 @@ app.get('/admin', (req, res) => {
   const avgMax = total > 0
     ? (rows.reduce((s, r) => s + r.max_digits, 0) / total).toFixed(2) : '–';
 
-  const condBadge = c => c === '40hz'
-    ? '<span class="c40">40 Hz</span>'
-    : '<span class="cpink">핑크 노이즈</span>';
+  const condBadge = c =>
+    c === '8hz'  ? '<span class="c8">8Hz</span>' :
+    c === '40hz' ? '<span class="c40">40Hz</span>' :
+                   '<span class="cpink">핑크</span>';
 
   const fmtDur = sec => sec != null
     ? `${Math.floor(sec / 60)}분 ${sec % 60}초`
@@ -261,7 +262,7 @@ app.get('/admin', (req, res) => {
     th{text-align:left;padding:.4rem .7rem;border-bottom:2px solid #1e1e3a;color:#6b6b90;font-size:.7rem;letter-spacing:.1em;text-transform:uppercase}
     td{padding:.45rem .7rem;border-bottom:1px solid #1a1a30}
     tr:hover td{background:#13132b}
-    .c40{color:#5e81f4;font-weight:700}.cpink{color:#f4a45e;font-weight:700}
+    .c8{color:#4ade80;font-weight:700}.c40{color:#5e81f4;font-weight:700}.cpink{color:#f4a45e;font-weight:700}
     .count{color:#6b6b90;font-size:.82rem;margin-bottom:.8rem}
   </style>
 </head><body>

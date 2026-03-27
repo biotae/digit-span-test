@@ -442,6 +442,25 @@ function ensureAudioCtx() {
   return audioCtx;
 }
 
+/* 8 Hz 스퀘어 웨이브 */
+function play8Hz(durationSec) {
+  try {
+    const ctx  = ensureAudioCtx();
+    const osc  = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'square';
+    osc.frequency.setValueAtTime(8, ctx.currentTime);
+    gain.gain.setValueAtTime(0, ctx.currentTime);
+    gain.gain.linearRampToValueAtTime(0.12, ctx.currentTime + 0.01);
+    gain.gain.setValueAtTime(0.12, ctx.currentTime + durationSec - 0.02);
+    gain.gain.linearRampToValueAtTime(0, ctx.currentTime + durationSec);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + durationSec);
+  } catch (e) { console.warn('Audio 8Hz:', e); }
+}
+
 /* 40 Hz 스퀘어 웨이브 */
 function play40Hz(durationSec) {
   try {
@@ -497,8 +516,9 @@ function playPinkNoise(durationSec) {
 
 /* 조건에 따라 자동 분기 */
 function playStimulus(durationSec) {
-  if (condition === '40hz') play40Hz(durationSec);
-  else                      playPinkNoise(durationSec);
+  if      (condition === '8hz')  play8Hz(durationSec);
+  else if (condition === '40hz') play40Hz(durationSec);
+  else                           playPinkNoise(durationSec);
 }
 
 /* ════════════════════════════════════════
@@ -760,8 +780,9 @@ document.getElementById('btn-start').addEventListener('click', () => {
 
   participant = { name, gender, age };
 
-  // 조건 랜덤 배정 (50 : 50)
-  condition = Math.random() < 0.5 ? '40hz' : 'pink_noise';
+  // 조건 랜덤 배정 (1/3 : 1/3 : 1/3)
+  const conditions = ['8hz', '40hz', 'pink_noise'];
+  condition = conditions[Math.floor(Math.random() * 3)];
 
   ensureAudioCtx();
   runGame();
