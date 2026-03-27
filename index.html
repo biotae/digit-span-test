@@ -250,6 +250,19 @@
     .digit-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(94,129,244,.2); }
     .digit-input.correct { border-color: var(--success); background: rgba(74,222,128,.1); color: var(--success); }
     .digit-input.wrong   { border-color: var(--fail);    background: rgba(244,94,129,.1); color: var(--fail); }
+    .btn-confirm {
+      font-size: 1.1rem;
+      padding: .8rem 3rem;
+      background: var(--accent);
+      color: #fff;
+      box-shadow: 0 6px 24px rgba(94,129,244,.35);
+      transition: opacity .2s, transform .1s;
+    }
+    .btn-confirm:disabled {
+      opacity: .25;
+      cursor: default;
+      box-shadow: none;
+    }
 
     /* ══════════════════════════════
        결과 화면
@@ -408,6 +421,7 @@
   <div id="digit-card" class="blank"></div>
   <div id="status-msg">잠시 후 시작합니다…</div>
   <div id="input-area" class="hidden"></div>
+  <button id="btn-confirm" class="btn btn-confirm hidden" disabled>확인</button>
 </div>
 
 <!-- ══ 결과 화면 ══ -->
@@ -554,7 +568,8 @@ const $result   = document.getElementById('screen-result');
 const $badge    = document.getElementById('level-badge');
 const $card     = document.getElementById('digit-card');
 const $status   = document.getElementById('status-msg');
-const $inputArea= document.getElementById('input-area');
+const $inputArea  = document.getElementById('input-area');
+const $btnConfirm = document.getElementById('btn-confirm');
 const $histBar  = document.getElementById('history-bar');
 const $resBest  = document.getElementById('result-best');
 const $resTbody = document.getElementById('result-tbody');
@@ -614,6 +629,10 @@ function waitForInput(seq) {
   $inputArea.innerHTML = '';
   $inputArea.classList.remove('hidden');
 
+  // 확인 버튼 초기화 (비활성)
+  $btnConfirm.classList.remove('hidden');
+  $btnConfirm.disabled = true;
+
   const inputs = Array.from({ length: n }, () => {
     const inp = document.createElement('input');
     inp.type      = 'text';
@@ -630,9 +649,16 @@ function waitForInput(seq) {
   return new Promise(resolve => {
     function lockAll() { inputs.forEach(i => { i.readOnly = true; i.blur(); }); }
 
-    function checkComplete() {
+    function updateConfirmBtn() {
+      // 모든 칸이 채워졌을 때만 활성화
+      $btnConfirm.disabled = inputs.some(i => i.value === '');
+    }
+
+    function submit() {
       if (inputs.some(i => i.value === '')) return;
       lockAll();
+      $btnConfirm.disabled = true;
+      $btnConfirm.classList.add('hidden');
       const entered = inputs.map(i => parseInt(i.value, 10));
       const correct = seq.every((d, i) => d === entered[i]);
       inputs.forEach((inp, i) => inp.classList.add(seq[i] === entered[i] ? 'correct' : 'wrong'));
@@ -641,22 +667,24 @@ function waitForInput(seq) {
       setTimeout(() => resolve({ correct, entered }), 900);
     }
 
+    $btnConfirm.onclick = submit;
+
     inputs.forEach((inp, idx) => {
       inp.addEventListener('keydown', e => {
         if (e.key === 'Backspace') {
           if (inp.value === '' && idx > 0) { inputs[idx-1].value = ''; inputs[idx-1].focus(); }
           else inp.value = '';
           e.preventDefault();
+          updateConfirmBtn();
           return;
         }
+        if (e.key === 'Enter') { submit(); return; }
         if (e.key.length === 1 && !/[0-9]/.test(e.key)) e.preventDefault();
       });
       inp.addEventListener('input', () => {
         inp.value = inp.value.replace(/[^0-9]/g, '').slice(-1);
-        if (inp.value !== '') {
-          if (idx < n - 1) inputs[idx + 1].focus();
-          checkComplete();
-        }
+        if (inp.value !== '' && idx < n - 1) inputs[idx + 1].focus();
+        updateConfirmBtn();
       });
     });
   });
@@ -674,6 +702,8 @@ async function runLevel(level) {
   $status.className   = '';
   $inputArea.classList.add('hidden');
   $inputArea.innerHTML = '';
+  $btnConfirm.classList.add('hidden');
+  $btnConfirm.disabled = true;
 
   await sleep(1200);
 
