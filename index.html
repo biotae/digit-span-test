@@ -453,93 +453,34 @@
 
 <script>
 /* ════════════════════════════════════════
-   오디오 유틸
+   오디오 유틸 (파일 재생)
 ════════════════════════════════════════ */
-let audioCtx = null;
+const audioFiles = {
+  '8hz':        new Audio('8Hz_T.mp3'),
+  '40hz':       new Audio('40Hz_T.mp3'),
+  'pink_noise': new Audio('pink_T.wav'),
+};
+Object.values(audioFiles).forEach(a => { a.preload = 'auto'; });
 
-function ensureAudioCtx() {
-  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  if (audioCtx.state === 'suspended') audioCtx.resume();
-  return audioCtx;
-}
+let _activeAudio   = null;
+let _activeTimeout = null;
 
-/* 8 Hz 스퀘어 웨이브 */
-function play8Hz(durationSec) {
-  try {
-    const ctx  = ensureAudioCtx();
-    const osc  = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.type = 'square';
-    osc.frequency.setValueAtTime(8, ctx.currentTime);
-    gain.gain.setValueAtTime(0, ctx.currentTime);
-    gain.gain.linearRampToValueAtTime(0.12, ctx.currentTime + 0.01);
-    gain.gain.setValueAtTime(0.12, ctx.currentTime + durationSec - 0.02);
-    gain.gain.linearRampToValueAtTime(0, ctx.currentTime + durationSec);
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.start(ctx.currentTime);
-    osc.stop(ctx.currentTime + durationSec);
-  } catch (e) { console.warn('Audio 8Hz:', e); }
-}
-
-/* 40 Hz 스퀘어 웨이브 */
-function play40Hz(durationSec) {
-  try {
-    const ctx  = ensureAudioCtx();
-    const osc  = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.type = 'square';
-    osc.frequency.setValueAtTime(40, ctx.currentTime);
-    gain.gain.setValueAtTime(0, ctx.currentTime);
-    gain.gain.linearRampToValueAtTime(0.12, ctx.currentTime + 0.01);
-    gain.gain.setValueAtTime(0.12, ctx.currentTime + durationSec - 0.02);
-    gain.gain.linearRampToValueAtTime(0, ctx.currentTime + durationSec);
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.start(ctx.currentTime);
-    osc.stop(ctx.currentTime + durationSec);
-  } catch (e) { console.warn('Audio 40Hz:', e); }
-}
-
-/* 핑크 노이즈 (Voss-McCartney 근사) */
-function playPinkNoise(durationSec) {
-  try {
-    const ctx = ensureAudioCtx();
-    const sr  = ctx.sampleRate;
-    const n   = Math.ceil(sr * durationSec);
-    const buf = ctx.createBuffer(1, n, sr);
-    const data = buf.getChannelData(0);
-    let b0=0,b1=0,b2=0,b3=0,b4=0,b5=0,b6=0;
-    for (let i = 0; i < n; i++) {
-      const w = Math.random() * 2 - 1;
-      b0 = 0.99886*b0 + w*0.0555179;
-      b1 = 0.99332*b1 + w*0.0750759;
-      b2 = 0.96900*b2 + w*0.1538520;
-      b3 = 0.86650*b3 + w*0.3104856;
-      b4 = 0.55000*b4 + w*0.5329522;
-      b5 = -0.7616*b5 - w*0.0168980;
-      data[i] = (b0+b1+b2+b3+b4+b5+b6 + w*0.5362) * 0.11;
-      b6 = w * 0.115926;
-    }
-    const src  = ctx.createBufferSource();
-    const gain = ctx.createGain();
-    src.buffer = buf;
-    gain.gain.setValueAtTime(0, ctx.currentTime);
-    gain.gain.linearRampToValueAtTime(0.38, ctx.currentTime + 0.01);
-    gain.gain.setValueAtTime(0.38, ctx.currentTime + durationSec - 0.02);
-    gain.gain.linearRampToValueAtTime(0, ctx.currentTime + durationSec);
-    src.connect(gain);
-    gain.connect(ctx.destination);
-    src.start(ctx.currentTime);
-    src.stop(ctx.currentTime + durationSec);
-  } catch (e) { console.warn('Audio PinkNoise:', e); }
-}
-
-/* 조건에 따라 자동 분기 */
 function playStimulus(durationSec) {
-  if      (condition === '8hz')  play8Hz(durationSec);
-  else if (condition === '40hz') play40Hz(durationSec);
-  else                           playPinkNoise(durationSec);
+  // 이전 재생 중단
+  if (_activeAudio) { _activeAudio.pause(); _activeAudio.currentTime = 0; }
+  if (_activeTimeout) clearTimeout(_activeTimeout);
+
+  const audio = audioFiles[condition];
+  if (!audio) return;
+  _activeAudio = audio;
+  audio.currentTime = 0;
+  audio.play().catch(e => console.warn('Audio play:', e));
+
+  _activeTimeout = setTimeout(() => {
+    audio.pause();
+    audio.currentTime = 0;
+    _activeAudio = null;
+  }, durationSec * 1000);
 }
 
 /* ════════════════════════════════════════
