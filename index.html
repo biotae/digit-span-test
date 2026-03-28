@@ -1048,12 +1048,34 @@ if (new URLSearchParams(location.search).has('test')) {
   overlay.style.cssText = [
     'position:fixed', 'inset:0', 'background:#0d0d1a',
     'display:flex', 'flex-direction:column', 'align-items:center', 'justify-content:center',
-    'z-index:9999', 'cursor:pointer', 'gap:1rem'
+    'z-index:9999', 'gap:1.4rem'
   ].join(';');
   overlay.innerHTML = `
     <div style="font-size:1.3rem;font-weight:900;color:#5e81f4;letter-spacing:.1em">TEST MODE</div>
-    <div style="font-size:1rem;color:#6b6b90">화면을 터치하여 시작</div>`;
+    <div style="display:flex;gap:.6rem;">
+      <button id="tl-ko" style="background:rgba(94,129,244,.9);border:none;border-radius:50px;color:#fff;font-size:.9rem;font-weight:700;padding:.4rem 1.1rem;cursor:pointer;letter-spacing:.06em;">한국어</button>
+      <button id="tl-en" style="background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:50px;color:#e8e8f0;font-size:.9rem;font-weight:700;padding:.4rem 1.1rem;cursor:pointer;letter-spacing:.06em;">English</button>
+      <button id="tl-zh" style="background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:50px;color:#e8e8f0;font-size:.9rem;font-weight:700;padding:.4rem 1.1rem;cursor:pointer;letter-spacing:.06em;">中文</button>
+    </div>
+    <div id="tl-hint" style="font-size:1rem;color:#6b6b90">화면을 터치하여 시작</div>`;
   document.body.appendChild(overlay);
+
+  const activeStyle  = 'background:rgba(94,129,244,.9);border:1px solid rgba(94,129,244,.9);color:#fff;';
+  const inactiveStyle= 'background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:#e8e8f0;';
+  const hints        = { ko:'화면을 터치하여 시작', en:'Tap to start', zh:'点击屏幕开始' };
+
+  ['ko','en','zh'].forEach(l => {
+    document.getElementById(`tl-${l}`).addEventListener('click', e => {
+      e.stopPropagation();
+      lang = l;
+      applyLang();
+      ['ko','en','zh'].forEach(x =>
+        document.getElementById(`tl-${x}`).style.cssText =
+          (x === l ? activeStyle : inactiveStyle) +
+          'font-size:.9rem;font-weight:700;padding:.4rem 1.1rem;cursor:pointer;letter-spacing:.06em;border-radius:50px;');
+      document.getElementById('tl-hint').textContent = hints[l];
+    });
+  });
 
   overlay.addEventListener('click', () => {
     overlay.remove();
