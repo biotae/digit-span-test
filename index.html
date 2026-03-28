@@ -666,7 +666,7 @@ const audioFiles = {
   '40hz':       new Audio('40Hz_T.mp3'),
   'pink_noise': new Audio('pink_T.wav'),
 };
-Object.values(audioFiles).forEach(a => { a.preload = 'auto'; a.volume = 0.5; });
+Object.values(audioFiles).forEach(a => { a.preload = 'auto'; a.volume = 0.1; });
 
 let _activeAudio   = null;
 let _activeTimeout = null;
