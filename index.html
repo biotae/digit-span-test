@@ -788,9 +788,8 @@ function playStimulus(durationSec) {
 
   const vol   = STIMULUS_VOL[condition] ?? 0.3;
   const gain  = getMasterGain();
-  // 재사용 GainNode 볼륨 즉각 설정 (ramp 없음, 매 재생마다 일관)
-  gain.gain.cancelScheduledValues(ctx.currentTime);
-  gain.gain.setValueAtTime(vol, ctx.currentTime);
+  gain.gain.cancelScheduledValues(0);
+  gain.gain.value = vol;
 
   const source = ctx.createBufferSource();
   source.buffer = buf;
