@@ -252,6 +252,36 @@ app.get('/api/export.csv', (req, res) => {
 });
 
 /* ════════════════════════════════════════
+   API: 시트 클리어 & 헤더 재설정
+════════════════════════════════════════ */
+app.post('/admin/clear-sheet', async (req, res) => {
+  if (!sheetsClient || !SPREADSHEET_ID) {
+    return res.status(400).json({ ok: false, error: 'Google Sheets 미연결' });
+  }
+  try {
+    // 전체 데이터 클리어
+    await sheetsClient.spreadsheets.values.clear({
+      spreadsheetId: SPREADSHEET_ID,
+      range: 'Sheet1',
+    });
+    // 헤더 재설정
+    await sheetsClient.spreadsheets.values.update({
+      spreadsheetId:    SPREADSHEET_ID,
+      range:            'Sheet1!A1',
+      valueInputOption: 'RAW',
+      resource: { values: [[
+        'ID', '이름', '성별', '나이', '조건', '제시법',
+        '최고 Digit', '성공 레벨', '전체 레벨', '소요 시간', '시도 차수', '일시'
+      ]] }
+    });
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('Clear sheet error:', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+/* ════════════════════════════════════════
    관리자 페이지
 ════════════════════════════════════════ */
 app.get('/admin', (req, res) => {
@@ -307,6 +337,7 @@ app.get('/admin', (req, res) => {
     .btn-csv{background:#4ade80;color:#0d1a10}
     .btn-sheet{background:#34a853;color:#fff}
     .btn-ref{background:#5e81f4;color:#fff}
+    .btn-clear{background:#f45e81;color:#fff}
     .btn-back{background:#222244;color:#e8e8f0}
     table{border-collapse:collapse;width:100%;font-size:.88rem}
     th{text-align:left;padding:.4rem .7rem;border-bottom:2px solid #1e1e3a;color:#6b6b90;font-size:.7rem;letter-spacing:.1em;text-transform:uppercase}
@@ -328,6 +359,7 @@ app.get('/admin', (req, res) => {
   <a class="btn btn-csv" href="/api/export.csv">CSV 다운로드</a>
   ${sheetLink}
   <button class="btn btn-ref" onclick="location.reload()">새로고침</button>
+  <button class="btn btn-clear" onclick="clearSheet()">시트 클리어</button>
   <a class="btn btn-back" href="/">← 테스트</a>
 </div>
 <p class="count">총 ${total}개 세션</p>
@@ -335,6 +367,15 @@ app.get('/admin', (req, res) => {
   <thead><tr><th>#</th><th>이름</th><th>성별</th><th>나이</th><th>조건</th><th>제시법</th><th>최고</th><th>성공/전체</th><th>소요 시간</th><th>차수</th><th>일시</th></tr></thead>
   <tbody>${tableRows}</tbody>
 </table>
+<script>
+async function clearSheet() {
+  if (!confirm('Google 시트의 모든 데이터를 삭제하고 헤더를 초기화합니다. 계속하시겠습니까?')) return;
+  const res = await fetch('/admin/clear-sheet', { method: 'POST' });
+  const data = await res.json();
+  if (data.ok) { alert('시트가 초기화되었습니다.'); location.reload(); }
+  else alert('오류: ' + data.error);
+}
+</script>
 </body></html>`);
 });
 
