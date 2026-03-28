@@ -908,10 +908,11 @@ function speakDigit(digit) {
 /* ════════════════════════════════════════
    시퀀스 재생
 ════════════════════════════════════════ */
-// 청각 모드 고정 타이밍 (ms)
-const T_STIMULUS = 500;   // 소리 자극
-const T_TTS_WIN  = 1000;  // TTS 창 (단일 숫자 발화 충분)
-const T_PAUSE    = 200;   // pause
+// 청각 모드 타이밍
+// t=0ms   : 소리자극 시작 (500ms)
+// t=500ms : TTS 시작 (fire-and-forget)
+// t=1000ms: 카드 블랭크 + TTS 취소
+// t=1200ms: 다음 숫자 소리자극 시작
 
 async function playSequence(seq) {
   for (let i = 0; i < seq.length; i++) {
@@ -919,27 +920,24 @@ async function playSequence(seq) {
       $card.textContent = '🔊';
       $card.className   = 'auditory';
 
-      // ① 소리 자극 시작 (Web Audio 스케줄)
-      playStimulus(T_STIMULUS / 1000);
+      playStimulus(0.5);                         // t=0: 소리자극
+      setTimeout(() => speakDigit(seq[i]), 500); // t=500ms: TTS 시작
 
-      // ② T_STIMULUS 후 TTS 트리거 (fire-and-forget — 고정 타이밍 유지)
-      setTimeout(() => speakDigit(seq[i]), T_STIMULUS);
-
-      // ③ 고정 총 창 대기
-      await sleep(T_STIMULUS + T_TTS_WIN);
+      await sleep(1000);                         // t=1000ms까지 대기
+      speechSynthesis.cancel();
+      $card.textContent = '';
+      $card.className   = 'blank';
+      await sleep(200);                          // t=1200ms: 다음 시작
 
     } else {
       $card.textContent = seq[i];
       $card.className   = 'show';
       playStimulus(0.5);
       await sleep(1000);
+      $card.textContent = '';
+      $card.className   = 'blank';
+      await sleep(200);
     }
-
-    // pause
-    speechSynthesis.cancel();
-    $card.textContent = '';
-    $card.className   = 'blank';
-    await sleep(T_PAUSE);
   }
 }
 
