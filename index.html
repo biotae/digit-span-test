@@ -1038,12 +1038,27 @@ document.getElementById('btn-restart').addEventListener('click', () => {
 applyLang();
 loadParticipantCount();
 
-// 테스트 바이패스: URL에 ?test 포함 시 자동 시작
+// 테스트 바이패스: URL에 ?test 포함 시 탭 한 번으로 시작 (autoplay 정책 충족)
 if (new URLSearchParams(location.search).has('test')) {
-  participant   = { name: 'TEST', gender: '남성', age: 99 };
-  condition     = ['8hz', '40hz', 'pink_noise'][Math.floor(Math.random() * 3)];
-  presentation  = 'auditory'; // 임시 테스트: 청각만
-  runGame();
+  participant  = { name: 'TEST', gender: '남성', age: 99 };
+  presentation = 'auditory'; // 임시 테스트: 청각만
+
+  const overlay = document.createElement('div');
+  overlay.style.cssText = [
+    'position:fixed', 'inset:0', 'background:#0d0d1a',
+    'display:flex', 'flex-direction:column', 'align-items:center', 'justify-content:center',
+    'z-index:9999', 'cursor:pointer', 'gap:1rem'
+  ].join(';');
+  overlay.innerHTML = `
+    <div style="font-size:1.3rem;font-weight:900;color:#5e81f4;letter-spacing:.1em">TEST MODE</div>
+    <div style="font-size:1rem;color:#6b6b90">화면을 터치하여 시작</div>`;
+  document.body.appendChild(overlay);
+
+  overlay.addEventListener('click', () => {
+    overlay.remove();
+    condition = ['8hz', '40hz', 'pink_noise'][Math.floor(Math.random() * 3)];
+    runGame();
+  }, { once: true });
 }
 </script>
 </body>
