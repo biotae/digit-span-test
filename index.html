@@ -716,8 +716,9 @@ function setDevice(d) {
 const STIMULUS_SRC = { '8hz': '8Hz_T.mp3', '40hz': '40Hz_T.mp3', 'pink_noise': 'pink_T.wav' };
 
 let audioCtx     = null;
-let audioBuffers = {};       // 디코딩된 AudioBuffer 캐시
+let audioBuffers = {};
 let _activeNode  = null;
+let _masterGain  = null;   // 재사용 GainNode — iOS 볼륨 일관성 확보
 
 function getAudioCtx() {
   if (!audioCtx) {
@@ -727,15 +728,28 @@ function getAudioCtx() {
   return audioCtx;
 }
 
+function getMasterGain() {
+  const ctx = getAudioCtx();
+  if (!_masterGain) {
+    _masterGain = ctx.createGain();
+    _masterGain.gain.setValueAtTime(1.0, ctx.currentTime);
+    _masterGain.connect(ctx.destination);
+  }
+  return _masterGain;
+}
+
 // 사용자 제스처 시점에 호출: AudioContext 언락 + 버퍼 로드 시작
 function unlockAudio() {
   const ctx = getAudioCtx();
+
+  // 마스터 GainNode 초기화 (첫 재생 전 생성)
+  getMasterGain();
 
   // 무음 버퍼 재생으로 iOS AudioContext 완전 언락
   const silentBuf = ctx.createBuffer(1, 1, 22050);
   const silentSrc = ctx.createBufferSource();
   silentSrc.buffer = silentBuf;
-  silentSrc.connect(ctx.destination);
+  silentSrc.connect(getMasterGain());
   silentSrc.start();
 
   // 백그라운드에서 오디오 파일 디코딩
@@ -766,24 +780,25 @@ async function loadAudioBuffers() {
 }
 
 function playStimulus(durationSec) {
-  // 이전 재생 중단
   if (_activeNode) { try { _activeNode.stop(); } catch (_) {} _activeNode = null; }
 
-  const ctx = getAudioCtx();
-  const buf = audioBuffers[condition];
-  if (!buf) return; // 아직 로드 중이면 무음 처리
+  const ctx  = getAudioCtx();
+  const buf  = audioBuffers[condition];
+  if (!buf) return;
 
-  const vol    = STIMULUS_VOL[condition] ?? 0.3;
+  const vol   = STIMULUS_VOL[condition] ?? 0.3;
+  const gain  = getMasterGain();
+  // 재사용 GainNode 볼륨 즉각 설정 (ramp 없음, 매 재생마다 일관)
+  gain.gain.cancelScheduledValues(ctx.currentTime);
+  gain.gain.setValueAtTime(vol, ctx.currentTime);
+
   const source = ctx.createBufferSource();
   source.buffer = buf;
-
-  const gain = ctx.createGain();
-  gain.gain.setValueAtTime(vol, ctx.currentTime); // 즉각 풀 볼륨 (ramp 없음)
-
   source.connect(gain);
-  gain.connect(ctx.destination);
-  source.start(ctx.currentTime);
-  source.stop(ctx.currentTime + durationSec);
+  // 10ms 여유: iOS 스케줄러 안정화
+  const t0 = ctx.currentTime + 0.01;
+  source.start(t0);
+  source.stop(t0 + durationSec);
   _activeNode = source;
 }
 
@@ -893,30 +908,38 @@ function speakDigit(digit) {
 /* ════════════════════════════════════════
    시퀀스 재생
 ════════════════════════════════════════ */
+// 청각 모드 고정 타이밍 (ms)
+const T_STIMULUS = 500;   // 소리 자극
+const T_TTS_WIN  = 1000;  // TTS 창 (단일 숫자 발화 충분)
+const T_PAUSE    = 200;   // pause
+
 async function playSequence(seq) {
   for (let i = 0; i < seq.length; i++) {
     if (presentation === 'auditory') {
-      // ① 소리 자극 0.5초
       $card.textContent = '🔊';
       $card.className   = 'auditory';
-      playStimulus(0.5);
-      await sleep(500);
 
-      // ② TTS 숫자 읽기 — 발화 완료까지 대기
-      await speakDigit(seq[i]);
+      // ① 소리 자극 시작 (Web Audio 스케줄)
+      playStimulus(T_STIMULUS / 1000);
+
+      // ② T_STIMULUS 후 TTS 트리거 (fire-and-forget — 고정 타이밍 유지)
+      setTimeout(() => speakDigit(seq[i]), T_STIMULUS);
+
+      // ③ 고정 총 창 대기
+      await sleep(T_STIMULUS + T_TTS_WIN);
+
     } else {
-      // 시각: 소리 자극 + 숫자 동시, 1초
       $card.textContent = seq[i];
       $card.className   = 'show';
       playStimulus(0.5);
       await sleep(1000);
     }
 
-    // ③ pause 0.2초
+    // pause
+    speechSynthesis.cancel();
     $card.textContent = '';
     $card.className   = 'blank';
-    if (presentation === 'auditory') speechSynthesis.cancel();
-    await sleep(200);
+    await sleep(T_PAUSE);
   }
 }
 
