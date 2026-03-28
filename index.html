@@ -1005,7 +1005,7 @@ document.getElementById('btn-start').addEventListener('click', () => {
 
   const conditions = ['8hz', '40hz', 'pink_noise'];
   condition    = conditions[Math.floor(Math.random() * 3)];
-  presentation = Math.random() < 0.5 ? 'visual' : 'auditory';
+  presentation = 'auditory'; // 임시 테스트: 청각만
 
   runGame();
 });
