@@ -85,6 +85,36 @@
     }
 
     /* ══════════════════════════════
+       기기 선택
+    ══════════════════════════════ */
+    .device-row {
+      display: flex;
+      gap: .6rem;
+      justify-content: center;
+      margin-bottom: 1.2rem;
+    }
+    .device-btn {
+      flex: 1;
+      background: rgba(255,255,255,.06);
+      border: 1px solid rgba(255,255,255,.15);
+      border-radius: 14px;
+      color: var(--muted);
+      font-size: .9rem;
+      font-weight: 700;
+      padding: .6rem .5rem;
+      cursor: pointer;
+      transition: all .15s;
+      letter-spacing: .04em;
+    }
+    .device-btn:hover { background: rgba(255,255,255,.12); }
+    .device-btn.active {
+      background: rgba(94,129,244,.2);
+      border-color: var(--accent);
+      color: var(--text);
+      box-shadow: 0 3px 12px rgba(94,129,244,.25);
+    }
+
+    /* ══════════════════════════════
        연구 안내 카드
     ══════════════════════════════ */
     .research-info {
@@ -451,6 +481,10 @@
 
   <h1>DIGIT SPAN TEST</h1>
   <p class="subtitle" id="txt-subtitle"></p>
+  <div class="device-row">
+    <button class="device-btn" id="dev-pc"     onclick="setDevice('pc')">💻 <span id="lbl-dev-pc"></span></button>
+    <button class="device-btn" id="dev-mobile" onclick="setDevice('mobile')">📱 <span id="lbl-dev-mobile"></span></button>
+  </div>
   <div class="research-info" id="txt-research-info"></div>
   <div id="participant-count" class="participant-count"></div>
 
@@ -552,6 +586,7 @@ const T = {
     alertGender:    '성별을 선택해 주세요.',
     alertAge:       '나이를 올바르게 입력해 주세요.',
     resultOk:       '성공',      resultNg:          '실패',
+    devPc: '컴퓨터', devMobile: '핸드폰',
     metaAge:        age => `${age}세`,
     metaAttempt:    n => n > 1 ? ` · ${n}차 시도` : '',
   },
@@ -579,6 +614,7 @@ const T = {
     alertName:      'Please enter your name.',
     alertGender:    'Please select your gender.',
     alertAge:       'Please enter a valid age.',
+    devPc: 'Computer', devMobile: 'Phone',
     resultOk:       'Pass',      resultNg:          'Fail',
     metaAge:        age => `${age} y/o`,
     metaAttempt:    n => n > 1 ? ` · Attempt ${n}` : '',
@@ -607,6 +643,7 @@ const T = {
     alertName:      '请输入您的姓名。',
     alertGender:    '请选择您的性别。',
     alertAge:       '请输入有效的年龄。',
+    devPc: '电脑', devMobile: '手机',
     resultOk:       '成功',      resultNg:          '失败',
     metaAge:        age => `${age}岁`,
     metaAttempt:    n => n > 1 ? ` · 第${n}次` : '',
@@ -627,6 +664,8 @@ function applyLang() {
   // 시작 화면
   document.getElementById('txt-subtitle').innerHTML    = t.subtitle;
   document.getElementById('txt-research-info').innerHTML = t.researchInfo;
+  document.getElementById('lbl-dev-pc').textContent     = t.devPc;
+  document.getElementById('lbl-dev-mobile').textContent = t.devMobile;
   document.getElementById('lbl-name').textContent   = t.labelName;
   document.getElementById('inp-name').placeholder   = t.placeholderName;
   document.getElementById('lbl-gender').textContent = t.labelGender;
@@ -661,7 +700,19 @@ document.getElementById('lang-zh').addEventListener('click', () => { lang = 'zh'
 /* ════════════════════════════════════════
    오디오 유틸 (Web Audio API — iOS ramp-up 방지)
 ════════════════════════════════════════ */
-const STIMULUS_VOL = { '8hz': 0.3, '40hz': 0.15, 'pink_noise': 0.3 };
+const DEVICE_VOL = {
+  pc:     { '8hz': 0.01, '40hz': 0.05, 'pink_noise': 0.01 },
+  mobile: { '8hz': 0.3,  '40hz': 0.15, 'pink_noise': 0.3  },
+};
+let device = (navigator.maxTouchPoints > 1) ? 'mobile' : 'pc';
+const STIMULUS_VOL = { ...DEVICE_VOL[device] }; // 기기 감지 초기값
+
+function setDevice(d) {
+  device = d;
+  Object.assign(STIMULUS_VOL, DEVICE_VOL[d]);
+  document.getElementById('dev-pc').classList.toggle('active',     d === 'pc');
+  document.getElementById('dev-mobile').classList.toggle('active', d === 'mobile');
+}
 const STIMULUS_SRC = { '8hz': '8Hz_T.mp3', '40hz': '40Hz_T.mp3', 'pink_noise': 'pink_T.wav' };
 
 let audioCtx     = null;
@@ -1114,6 +1165,7 @@ document.getElementById('btn-restart').addEventListener('click', () => {
    초기화
 ════════════════════════════════════════ */
 applyLang();
+setDevice(device); // 기기 자동 감지 후 버튼 상태 반영
 loadParticipantCount();
 
 // 테스트 바이패스: URL에 ?test 포함 시 탭 한 번으로 시작 (autoplay 정책 충족)
