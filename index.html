@@ -666,7 +666,7 @@ const audioFiles = {
   '40hz':       new Audio('40Hz_T.mp3'),
   'pink_noise': new Audio('pink_T.wav'),
 };
-Object.values(audioFiles).forEach(a => { a.preload = 'auto'; });
+Object.values(audioFiles).forEach(a => { a.preload = 'auto'; a.volume = 0.8; });
 
 let _activeAudio   = null;
 let _activeTimeout = null;
@@ -757,8 +757,9 @@ function speakDigit(digit) {
   if (!window.speechSynthesis) return;
   speechSynthesis.cancel();
   const utt = new SpeechSynthesisUtterance(String(digit));
-  utt.rate  = 0.85;
-  utt.pitch = 1;
+  utt.rate   = 0.85;
+  utt.pitch  = 1;
+  utt.volume = 1.0;  // Web Speech API 최대치
   speechSynthesis.speak(utt);
 }
 
