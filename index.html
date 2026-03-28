@@ -659,25 +659,38 @@ document.getElementById('lang-en').addEventListener('click', () => { lang = 'en'
 document.getElementById('lang-zh').addEventListener('click', () => { lang = 'zh'; applyLang(); });
 
 /* ════════════════════════════════════════
-   오디오 유틸 (파일 재생)
+   오디오 유틸 (Web Audio API — iOS ramp-up 방지)
 ════════════════════════════════════════ */
-const audioFiles = {
-  '8hz':        new Audio('8Hz_T.mp3'),
-  '40hz':       new Audio('40Hz_T.mp3'),
-  'pink_noise': new Audio('pink_T.wav'),
-};
-Object.values(audioFiles).forEach(a => { a.preload = 'auto'; a.volume = 0.3; });
-audioFiles['40hz'].volume = 0.15;
+const STIMULUS_VOL = { '8hz': 0.3, '40hz': 0.15, 'pink_noise': 0.3 };
+const STIMULUS_SRC = { '8hz': '8Hz_T.mp3', '40hz': '40Hz_T.mp3', 'pink_noise': 'pink_T.wav' };
 
-// iOS/Android: 사용자 제스처 시점에 오디오 언락
+let audioCtx     = null;
+let audioBuffers = {};       // 디코딩된 AudioBuffer 캐시
+let _activeNode  = null;
+
+function getAudioCtx() {
+  if (!audioCtx) {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  return audioCtx;
+}
+
+// 사용자 제스처 시점에 호출: AudioContext 언락 + 버퍼 로드 시작
 function unlockAudio() {
-  Object.values(audioFiles).forEach(a => {
-    const v = a.volume;
-    a.volume = 0;
-    a.play().catch(() => {});
-    setTimeout(() => { a.pause(); a.currentTime = 0; a.volume = v; }, 80);
-  });
-  // speechSynthesis 언락 — 선택 언어로 unlock
+  const ctx = getAudioCtx();
+
+  // 무음 버퍼 재생으로 iOS AudioContext 완전 언락
+  const silentBuf = ctx.createBuffer(1, 1, 22050);
+  const silentSrc = ctx.createBufferSource();
+  silentSrc.buffer = silentBuf;
+  silentSrc.connect(ctx.destination);
+  silentSrc.start();
+
+  // 백그라운드에서 오디오 파일 디코딩
+  loadAudioBuffers();
+
+  // speechSynthesis 언락 — 선택 언어로
   if (window.speechSynthesis) {
     const u      = new SpeechSynthesisUtterance('');
     const target = ttsLang[lang] || 'ko-KR';
@@ -689,24 +702,38 @@ function unlockAudio() {
   }
 }
 
-let _activeAudio   = null;
-let _activeTimeout = null;
+async function loadAudioBuffers() {
+  const ctx = getAudioCtx();
+  await Promise.all(Object.entries(STIMULUS_SRC).map(async ([key, url]) => {
+    if (audioBuffers[key]) return; // 이미 로드됨
+    try {
+      const res = await fetch(url);
+      const raw = await res.arrayBuffer();
+      audioBuffers[key] = await ctx.decodeAudioData(raw);
+    } catch (e) { console.warn('Buffer load failed:', key, e); }
+  }));
+}
 
 function playStimulus(durationSec) {
-  if (_activeAudio) { _activeAudio.pause(); _activeAudio.currentTime = 0; }
-  if (_activeTimeout) clearTimeout(_activeTimeout);
+  // 이전 재생 중단
+  if (_activeNode) { try { _activeNode.stop(); } catch (_) {} _activeNode = null; }
 
-  const audio = audioFiles[condition];
-  if (!audio) return;
-  _activeAudio = audio;
-  audio.currentTime = 0;
-  audio.play().catch(e => console.warn('Audio play:', e));
+  const ctx = getAudioCtx();
+  const buf = audioBuffers[condition];
+  if (!buf) return; // 아직 로드 중이면 무음 처리
 
-  _activeTimeout = setTimeout(() => {
-    audio.pause();
-    audio.currentTime = 0;
-    _activeAudio = null;
-  }, durationSec * 1000);
+  const vol    = STIMULUS_VOL[condition] ?? 0.3;
+  const source = ctx.createBufferSource();
+  source.buffer = buf;
+
+  const gain = ctx.createGain();
+  gain.gain.setValueAtTime(vol, ctx.currentTime); // 즉각 풀 볼륨 (ramp 없음)
+
+  source.connect(gain);
+  gain.connect(ctx.destination);
+  source.start(ctx.currentTime);
+  source.stop(ctx.currentTime + durationSec);
+  _activeNode = source;
 }
 
 /* ════════════════════════════════════════
