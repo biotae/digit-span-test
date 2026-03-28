@@ -818,18 +818,25 @@ function getTTSVoice(langCode) {
       || null;
 }
 
+// 발화 완료까지 대기하는 Promise 반환 (최대 1500ms 타임아웃)
 function speakDigit(digit) {
-  if (!window.speechSynthesis) return;
-  speechSynthesis.cancel();
-  const utt    = new SpeechSynthesisUtterance(String(digit));
-  const target = ttsLang[lang] || 'ko-KR';
-  utt.lang     = target;
-  const voice  = getTTSVoice(target);
-  if (voice) utt.voice = voice;
-  utt.rate     = 0.85;
-  utt.pitch    = 1;
-  utt.volume   = 1.0;
-  speechSynthesis.speak(utt);
+  return new Promise(resolve => {
+    if (!window.speechSynthesis) { resolve(); return; }
+    speechSynthesis.cancel();
+    const utt    = new SpeechSynthesisUtterance(String(digit));
+    const target = ttsLang[lang] || 'ko-KR';
+    utt.lang     = target;
+    const voice  = getTTSVoice(target);
+    if (voice) utt.voice = voice;
+    utt.rate     = 0.85;
+    utt.pitch    = 1;
+    utt.volume   = 1.0;
+    const done   = () => { clearTimeout(timer); resolve(); };
+    utt.onend    = done;
+    utt.onerror  = done;
+    const timer  = setTimeout(done, 1500); // 안전망
+    speechSynthesis.speak(utt);
+  });
 }
 
 /* ════════════════════════════════════════
@@ -844,9 +851,8 @@ async function playSequence(seq) {
       playStimulus(0.5);
       await sleep(500);
 
-      // ② TTS 숫자 읽기 0.5초
-      speakDigit(seq[i]);
-      await sleep(500);
+      // ② TTS 숫자 읽기 — 발화 완료까지 대기
+      await speakDigit(seq[i]);
     } else {
       // 시각: 소리 자극 + 숫자 동시, 1초
       $card.textContent = seq[i];
