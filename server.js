@@ -20,6 +20,7 @@ db.exec(`
     gender             TEXT    NOT NULL,
     age                INTEGER NOT NULL,
     condition          TEXT    NOT NULL,
+    presentation       TEXT    NOT NULL DEFAULT 'visual',
     max_digits         INTEGER NOT NULL,
     total_levels       INTEGER NOT NULL,
     successful_levels  INTEGER NOT NULL,
@@ -33,11 +34,12 @@ db.exec(`
 // 기존 DB에 컬럼이 없을 경우 추가 (마이그레이션)
 try { db.exec('ALTER TABLE sessions ADD COLUMN duration_sec REAL'); } catch (_) {}
 try { db.exec('ALTER TABLE sessions ADD COLUMN attempt_no INTEGER NOT NULL DEFAULT 1'); } catch (_) {}
+try { db.exec("ALTER TABLE sessions ADD COLUMN presentation TEXT NOT NULL DEFAULT 'visual'"); } catch (_) {}
 
 const insertStmt = db.prepare(`
   INSERT INTO sessions
-    (name, gender, age, condition, max_digits, total_levels, successful_levels, duration_sec, attempt_no, results)
-  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    (name, gender, age, condition, presentation, max_digits, total_levels, successful_levels, duration_sec, attempt_no, results)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `);
 const allStmt = db.prepare('SELECT * FROM sessions ORDER BY created_at DESC');
 const allAsc  = db.prepare('SELECT * FROM sessions ORDER BY created_at ASC');
@@ -80,20 +82,30 @@ async function initGoogleSheets() {
     const client = await auth.getClient();
     sheetsClient = google.sheets({ version: 'v4', auth: client });
 
-    // 헤더 행이 없으면 추가
+    // 헤더 행 확인 및 추가
     const check = await sheetsClient.spreadsheets.values.get({
       spreadsheetId: SPREADSHEET_ID,
-      range: 'Sheet1!A1:J1',
+      range: 'Sheet1!A1:M1',
     });
-    if (!check.data.values || check.data.values.length === 0) {
+    const headerRow = (check.data.values || [[]])[0] || [];
+    if (headerRow.length === 0) {
       await sheetsClient.spreadsheets.values.append({
         spreadsheetId:    SPREADSHEET_ID,
         range:            'Sheet1!A1',
         valueInputOption: 'RAW',
         resource: { values: [[
-          'ID', '이름', '성별', '나이', '조건',
+          'ID', '이름', '성별', '나이', '조건', '제시법',
           '최고 Digit', '성공 레벨', '전체 레벨', '소요 시간', '시도 차수', '일시'
         ]] }
+      });
+    } else if (!headerRow.includes('제시법')) {
+      // 기존 시트에 제시법 컬럼 헤더 추가 (마지막 열 다음)
+      const nextCol = String.fromCharCode(65 + headerRow.length); // A=65
+      await sheetsClient.spreadsheets.values.update({
+        spreadsheetId:    SPREADSHEET_ID,
+        range:            `Sheet1!${nextCol}1`,
+        valueInputOption: 'RAW',
+        resource: { values: [['제시법']] }
       });
     }
 
@@ -140,7 +152,7 @@ app.use(express.static(__dirname));
 ════════════════════════════════════════ */
 app.post('/api/save', async (req, res) => {
   try {
-    const { name, gender, age, condition, duration_sec, attempt_no, results } = req.body;
+    const { name, gender, age, condition, presentation, duration_sec, attempt_no, results } = req.body;
     if (!name || !gender || !age || !condition || !Array.isArray(results)) {
       return res.status(400).json({ ok: false, error: '필수 항목 누락' });
     }
@@ -148,11 +160,12 @@ app.post('/api/save', async (req, res) => {
     const successes  = results.filter(r => r.success);
     const max_digits = successes.length > 0
       ? Math.max(...successes.map(r => r.level)) : 0;
-    const dur = typeof duration_sec === 'number' ? Math.round(duration_sec) : null;
+    const dur  = typeof duration_sec === 'number' ? Math.round(duration_sec) : null;
+    const pres = presentation === 'auditory' ? 'auditory' : 'visual';
 
     // SQLite 저장
     const info = insertStmt.run(
-      name.trim(), gender, parseInt(age, 10), condition,
+      name.trim(), gender, parseInt(age, 10), condition, pres,
       max_digits, results.length, successes.length,
       dur,
       parseInt(attempt_no, 10) || 1,
@@ -169,6 +182,7 @@ app.post('/api/save', async (req, res) => {
     appendToSheet([
       id, name.trim(), gender, parseInt(age, 10),
       condition === '8hz' ? '8Hz' : condition === '40hz' ? '40Hz' : '핑크',
+      pres === 'auditory' ? '청각' : '시각',
       max_digits > 0 ? `${max_digits}-Digit` : '–',
       successes.length, results.length,
       durLabel,
@@ -223,7 +237,7 @@ app.get('/api/sessions', (req, res) => {
 ════════════════════════════════════════ */
 app.get('/api/export.csv', (req, res) => {
   const rows    = allAsc.all();
-  const headers = ['id','name','gender','age','condition','max_digits',
+  const headers = ['id','name','gender','age','condition','presentation','max_digits',
                    'total_levels','successful_levels','duration_sec','attempt_no','created_at'];
   const escape  = v =>
     (typeof v === 'string' && /[,"\n]/.test(v)) ? `"${v.replace(/"/g,'""')}"` : (v ?? '');
@@ -253,6 +267,9 @@ app.get('/admin', (req, res) => {
     c === '40hz' ? '<span class="c40">40Hz</span>' :
                    '<span class="cpink">핑크</span>';
 
+  const presBadge = p =>
+    p === 'auditory' ? '<span class="caud">청각</span>' : '<span class="cvis">시각</span>';
+
   const fmtDur = sec => sec != null
     ? `${Math.floor(sec / 60)}분 ${sec % 60}초`
     : '–';
@@ -261,13 +278,14 @@ app.get('/admin', (req, res) => {
     <tr>
       <td>${r.id}</td><td>${r.name}</td><td>${r.gender}</td><td>${r.age}</td>
       <td>${condBadge(r.condition)}</td>
+      <td>${presBadge(r.presentation)}</td>
       <td><b>${r.max_digits > 0 ? r.max_digits + '-Digit' : '–'}</b></td>
       <td>${r.successful_levels} / ${r.total_levels}</td>
       <td>${fmtDur(r.duration_sec)}</td>
       <td style="text-align:center">${r.attempt_no ?? 1}</td>
       <td>${new Date(r.created_at).toLocaleString('ko-KR')}</td>
     </tr>`).join('') ||
-    '<tr><td colspan="9" style="text-align:center;color:#555;padding:2rem">데이터 없음</td></tr>';
+    '<tr><td colspan="10" style="text-align:center;color:#555;padding:2rem">데이터 없음</td></tr>';
 
   const sheetLink = SPREADSHEET_ID
     ? `<a class="btn btn-sheet" href="https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}" target="_blank">Google 시트 열기</a>`
@@ -295,6 +313,7 @@ app.get('/admin', (req, res) => {
     td{padding:.45rem .7rem;border-bottom:1px solid #1a1a30}
     tr:hover td{background:#13132b}
     .c8{color:#4ade80;font-weight:700}.c40{color:#5e81f4;font-weight:700}.cpink{color:#f4a45e;font-weight:700}
+    .cvis{color:#a0c4ff;font-weight:700}.caud{color:#ffd6a5;font-weight:700}
     .count{color:#6b6b90;font-size:.82rem;margin-bottom:.8rem}
   </style>
 </head><body>
@@ -313,7 +332,7 @@ app.get('/admin', (req, res) => {
 </div>
 <p class="count">총 ${total}개 세션</p>
 <table>
-  <thead><tr><th>#</th><th>이름</th><th>성별</th><th>나이</th><th>조건</th><th>최고</th><th>성공/전체</th><th>소요 시간</th><th>차수</th><th>일시</th></tr></thead>
+  <thead><tr><th>#</th><th>이름</th><th>성별</th><th>나이</th><th>조건</th><th>제시법</th><th>최고</th><th>성공/전체</th><th>소요 시간</th><th>차수</th><th>일시</th></tr></thead>
   <tbody>${tableRows}</tbody>
 </table>
 </body></html>`);

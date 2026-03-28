@@ -265,6 +265,17 @@
       background: linear-gradient(160deg, #1a1a3a, #13132b);
     }
     #digit-card.blank { border-color: rgba(94,129,244,.07); }
+    #digit-card.auditory {
+      border-color: var(--accent2);
+      box-shadow: 0 20px 60px rgba(244,94,129,.32), inset 0 1px 0 rgba(255,255,255,.08);
+      background: linear-gradient(160deg, #2a1a2a, #1e132b);
+      font-size: clamp(3.5rem, 9vw, 5.5rem);
+      animation: pulse-aud .6s ease-in-out infinite alternate;
+    }
+    @keyframes pulse-aud {
+      from { box-shadow: 0 20px 60px rgba(244,94,129,.18); }
+      to   { box-shadow: 0 20px 60px rgba(244,94,129,.55); }
+    }
 
     #status-msg {
       font-size: .92rem;
@@ -714,12 +725,13 @@ const $saveStatus = document.getElementById('save-status');
 /* ════════════════════════════════════════
    게임 상태
 ════════════════════════════════════════ */
-let participant = { name: '', gender: '', age: 0 };
-let condition   = '';
-let gameResults = [];
+let participant   = { name: '', gender: '', age: 0 };
+let condition     = '';   // '8hz' | '40hz' | 'pink_noise'
+let presentation  = '';   // 'visual' | 'auditory'
+let gameResults   = [];
 let gameStartTime = 0;
-let attemptNo = 1;
-let currentLevel = 3;
+let attemptNo     = 1;
+let currentLevel  = 3;
 
 /* ════════════════════════════════════════
    화면 전환
@@ -739,17 +751,36 @@ function refreshHistBar() {
 }
 
 /* ════════════════════════════════════════
+   청각 제시: 숫자 TTS
+════════════════════════════════════════ */
+function speakDigit(digit) {
+  if (!window.speechSynthesis) return;
+  speechSynthesis.cancel();
+  const utt = new SpeechSynthesisUtterance(String(digit));
+  utt.rate  = 0.85;
+  utt.pitch = 1;
+  speechSynthesis.speak(utt);
+}
+
+/* ════════════════════════════════════════
    시퀀스 재생
 ════════════════════════════════════════ */
 async function playSequence(seq) {
   for (let i = 0; i < seq.length; i++) {
-    $card.textContent = seq[i];
-    $card.className   = 'show';
+    if (presentation === 'auditory') {
+      $card.textContent = '🔊';
+      $card.className   = 'auditory';
+      speakDigit(seq[i]);
+    } else {
+      $card.textContent = seq[i];
+      $card.className   = 'show';
+    }
     playStimulus(0.5);
     await sleep(1000);
 
     $card.textContent = '';
     $card.className   = 'blank';
+    if (presentation === 'auditory') speechSynthesis.cancel();
     await sleep(200);
   }
 }
@@ -868,6 +899,7 @@ async function saveToServer() {
         gender:       participant.gender,
         age:          participant.age,
         condition,
+        presentation,
         duration_sec: Math.round((Date.now() - gameStartTime) / 1000),
         attempt_no:   attemptNo,
         results:      gameResults
@@ -972,7 +1004,8 @@ document.getElementById('btn-start').addEventListener('click', () => {
   participant = { name, gender, age };
 
   const conditions = ['8hz', '40hz', 'pink_noise'];
-  condition = conditions[Math.floor(Math.random() * 3)];
+  condition    = conditions[Math.floor(Math.random() * 3)];
+  presentation = Math.random() < 0.5 ? 'visual' : 'auditory';
 
   runGame();
 });
