@@ -732,7 +732,7 @@ function getMasterGain() {
   const ctx = getAudioCtx();
   if (!_masterGain) {
     _masterGain = ctx.createGain();
-    _masterGain.gain.setValueAtTime(1.0, ctx.currentTime);
+    _masterGain.gain.setValueAtTime(0, ctx.currentTime); // iOS: 첫 재생 전 gain=1.0 순간 출력 방지
     _masterGain.connect(ctx.destination);
   }
   return _masterGain;
@@ -920,7 +920,6 @@ async function playSequence(seq) {
       $card.textContent = '🔊';
       $card.className   = 'auditory';
 
-      if (i === 0) await sleep(500);             // 첫 자극 전 500ms 딜레이 (iOS 볼륨 안정화)
       playStimulus(0.5);                         // t=0: 소리자극
       setTimeout(() => speakDigit(seq[i]), 500); // t=500ms: TTS 시작
 
@@ -933,7 +932,6 @@ async function playSequence(seq) {
     } else {
       $card.textContent = seq[i];
       $card.className   = 'show';
-      if (i === 0) await sleep(500);             // 첫 자극 전 500ms 딜레이 (iOS 볼륨 안정화)
       playStimulus(0.5);
       await sleep(1000);
       $card.textContent = '';
