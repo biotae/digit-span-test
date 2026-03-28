@@ -1057,12 +1057,19 @@ if (new URLSearchParams(location.search).has('test')) {
       <button id="tl-en" style="background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:50px;color:#e8e8f0;font-size:.9rem;font-weight:700;padding:.4rem 1.1rem;cursor:pointer;letter-spacing:.06em;">English</button>
       <button id="tl-zh" style="background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:50px;color:#e8e8f0;font-size:.9rem;font-weight:700;padding:.4rem 1.1rem;cursor:pointer;letter-spacing:.06em;">中文</button>
     </div>
-    <div id="tl-hint" style="font-size:1rem;color:#6b6b90">화면을 터치하여 시작</div>`;
+    <button id="tl-start" style="
+      background:linear-gradient(135deg,#5e81f4,#f45e81);
+      border:none;border-radius:50px;color:#fff;
+      font-size:1.15rem;font-weight:900;
+      padding:.85rem 3rem;cursor:pointer;
+      letter-spacing:.08em;
+      box-shadow:0 8px 32px rgba(94,129,244,.45);
+      margin-top:.4rem;">테스트 시작!</button>`;
   document.body.appendChild(overlay);
 
   const activeStyle  = 'background:rgba(94,129,244,.9);border:1px solid rgba(94,129,244,.9);color:#fff;';
   const inactiveStyle= 'background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:#e8e8f0;';
-  const hints        = { ko:'화면을 터치하여 시작', en:'Tap to start', zh:'点击屏幕开始' };
+  const startLabels  = { ko:'테스트 시작!', en:'Start Test!', zh:'开始测试！' };
 
   ['ko','en','zh'].forEach(l => {
     document.getElementById(`tl-${l}`).addEventListener('click', e => {
@@ -1073,15 +1080,15 @@ if (new URLSearchParams(location.search).has('test')) {
         document.getElementById(`tl-${x}`).style.cssText =
           (x === l ? activeStyle : inactiveStyle) +
           'font-size:.9rem;font-weight:700;padding:.4rem 1.1rem;cursor:pointer;letter-spacing:.06em;border-radius:50px;');
-      document.getElementById('tl-hint').textContent = hints[l];
+      document.getElementById('tl-start').textContent = startLabels[l];
     });
   });
 
-  overlay.addEventListener('click', () => {
+  document.getElementById('tl-start').addEventListener('click', () => {
     overlay.remove();
     condition = ['8hz', '40hz', 'pink_noise'][Math.floor(Math.random() * 3)];
     runGame();
-  }, { once: true });
+  });
 }
 </script>
 </body>
