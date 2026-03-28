@@ -1037,6 +1037,14 @@ document.getElementById('btn-restart').addEventListener('click', () => {
 ════════════════════════════════════════ */
 applyLang();
 loadParticipantCount();
+
+// 테스트 바이패스: URL에 ?test 포함 시 자동 시작
+if (new URLSearchParams(location.search).has('test')) {
+  participant   = { name: 'TEST', gender: '남성', age: 99 };
+  condition     = ['8hz', '40hz', 'pink_noise'][Math.floor(Math.random() * 3)];
+  presentation  = 'auditory'; // 임시 테스트: 청각만
+  runGame();
+}
 </script>
 </body>
 </html>
