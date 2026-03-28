@@ -677,11 +677,14 @@ function unlockAudio() {
     a.play().catch(() => {});
     setTimeout(() => { a.pause(); a.currentTime = 0; a.volume = v; }, 80);
   });
-  // speechSynthesis 언락 — cancel 하지 않음 (실제 TTS 간섭 방지)
+  // speechSynthesis 언락 — 선택 언어로 unlock
   if (window.speechSynthesis) {
-    const u = new SpeechSynthesisUtterance('');
+    const u      = new SpeechSynthesisUtterance('');
+    const target = ttsLang[lang] || 'ko-KR';
+    u.lang       = target;
+    const voice  = getTTSVoice(target);
+    if (voice) u.voice = voice;
     u.volume = 0;
-    u.onend = () => {};
     speechSynthesis.speak(u);
   }
 }
@@ -773,14 +776,32 @@ function refreshHistBar() {
 ════════════════════════════════════════ */
 const ttsLang = { ko: 'ko-KR', en: 'en-US', zh: 'zh-CN' };
 
+// 음성 목록 (voiceschanged 이벤트로 업데이트)
+let _voices = [];
+if (window.speechSynthesis) {
+  const loadVoices = () => { _voices = speechSynthesis.getVoices(); };
+  loadVoices();
+  speechSynthesis.addEventListener('voiceschanged', loadVoices);
+}
+
+function getTTSVoice(langCode) {
+  // 정확한 매칭 우선, 없으면 언어 코드 앞부분 매칭
+  return _voices.find(v => v.lang === langCode)
+      || _voices.find(v => v.lang.startsWith(langCode.split('-')[0]))
+      || null;
+}
+
 function speakDigit(digit) {
   if (!window.speechSynthesis) return;
   speechSynthesis.cancel();
-  const utt  = new SpeechSynthesisUtterance(String(digit));
-  utt.lang   = ttsLang[lang] || 'ko-KR';
-  utt.rate   = 0.85;
-  utt.pitch  = 1;
-  utt.volume = 1.0;
+  const utt    = new SpeechSynthesisUtterance(String(digit));
+  const target = ttsLang[lang] || 'ko-KR';
+  utt.lang     = target;
+  const voice  = getTTSVoice(target);
+  if (voice) utt.voice = voice;
+  utt.rate     = 0.85;
+  utt.pitch    = 1;
+  utt.volume   = 1.0;
   speechSynthesis.speak(utt);
 }
 
