@@ -669,6 +669,22 @@ const audioFiles = {
 Object.values(audioFiles).forEach(a => { a.preload = 'auto'; a.volume = 0.1; });
 audioFiles['40hz'].volume = 0.05;
 
+// iOS/Android: 사용자 제스처 시점에 오디오 언락
+function unlockAudio() {
+  Object.values(audioFiles).forEach(a => {
+    const v = a.volume;
+    a.volume = 0;
+    a.play().catch(() => {});
+    setTimeout(() => { a.pause(); a.currentTime = 0; a.volume = v; }, 80);
+  });
+  if (window.speechSynthesis) {
+    const u = new SpeechSynthesisUtterance('');
+    u.volume = 0;
+    speechSynthesis.speak(u);
+    setTimeout(() => speechSynthesis.cancel(), 100);
+  }
+}
+
 let _activeAudio   = null;
 let _activeTimeout = null;
 
@@ -1017,11 +1033,13 @@ document.getElementById('btn-start').addEventListener('click', () => {
   condition    = conditions[Math.floor(Math.random() * 3)];
   presentation = 'auditory'; // 임시 테스트: 청각만
 
+  unlockAudio();
   runGame();
 });
 
 document.getElementById('btn-retry').addEventListener('click', () => {
   attemptNo++;
+  unlockAudio();
   runGame();
 });
 
@@ -1088,6 +1106,7 @@ if (new URLSearchParams(location.search).has('test')) {
   document.getElementById('tl-start').addEventListener('click', () => {
     overlay.remove();
     condition = ['8hz', '40hz', 'pink_noise'][Math.floor(Math.random() * 3)];
+    unlockAudio();
     runGame();
   });
 }
