@@ -768,16 +768,24 @@ function speakDigit(digit) {
 async function playSequence(seq) {
   for (let i = 0; i < seq.length; i++) {
     if (presentation === 'auditory') {
+      // ① 소리 자극 0.5초
       $card.textContent = '🔊';
       $card.className   = 'auditory';
+      playStimulus(0.5);
+      await sleep(500);
+
+      // ② TTS 숫자 읽기 0.5초
       speakDigit(seq[i]);
+      await sleep(500);
     } else {
+      // 시각: 소리 자극 + 숫자 동시, 1초
       $card.textContent = seq[i];
       $card.className   = 'show';
+      playStimulus(0.5);
+      await sleep(1000);
     }
-    playStimulus(0.5);
-    await sleep(1000);
 
+    // ③ pause 0.2초
     $card.textContent = '';
     $card.className   = 'blank';
     if (presentation === 'auditory') speechSynthesis.cancel();
