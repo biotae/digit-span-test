@@ -666,8 +666,8 @@ const audioFiles = {
   '40hz':       new Audio('40Hz_T.mp3'),
   'pink_noise': new Audio('pink_T.wav'),
 };
-Object.values(audioFiles).forEach(a => { a.preload = 'auto'; a.volume = 0.1; });
-audioFiles['40hz'].volume = 0.05;
+Object.values(audioFiles).forEach(a => { a.preload = 'auto'; a.volume = 0.3; });
+audioFiles['40hz'].volume = 0.15;
 
 // iOS/Android: 사용자 제스처 시점에 오디오 언락
 function unlockAudio() {
@@ -677,11 +677,12 @@ function unlockAudio() {
     a.play().catch(() => {});
     setTimeout(() => { a.pause(); a.currentTime = 0; a.volume = v; }, 80);
   });
+  // speechSynthesis 언락 — cancel 하지 않음 (실제 TTS 간섭 방지)
   if (window.speechSynthesis) {
     const u = new SpeechSynthesisUtterance('');
     u.volume = 0;
+    u.onend = () => {};
     speechSynthesis.speak(u);
-    setTimeout(() => speechSynthesis.cancel(), 100);
   }
 }
 
@@ -770,13 +771,16 @@ function refreshHistBar() {
 /* ════════════════════════════════════════
    청각 제시: 숫자 TTS
 ════════════════════════════════════════ */
+const ttsLang = { ko: 'ko-KR', en: 'en-US', zh: 'zh-CN' };
+
 function speakDigit(digit) {
   if (!window.speechSynthesis) return;
   speechSynthesis.cancel();
-  const utt = new SpeechSynthesisUtterance(String(digit));
+  const utt  = new SpeechSynthesisUtterance(String(digit));
+  utt.lang   = ttsLang[lang] || 'ko-KR';
   utt.rate   = 0.85;
   utt.pitch  = 1;
-  utt.volume = 1.0;  // Web Speech API 최대치
+  utt.volume = 1.0;
   speechSynthesis.speak(utt);
 }
 
