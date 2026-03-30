@@ -655,7 +655,7 @@ document.getElementById('lang-zh').addEventListener('click', () => { lang = 'zh'
 /* ════════════════════════════════════════
    오디오 유틸 (Web Audio API)
 ════════════════════════════════════════ */
-const STIMULUS_VOL = { '8hz': 0.01, '40hz': 0.05, 'pink_noise': 0.01 };
+const STIMULUS_VOL = { '8hz': 1, '40hz': 1, 'pink_noise': 1 };
 const STIMULUS_SRC = { '8hz': '8Hz_T.mp3', '40hz': '40Hz_T.mp3', 'pink_noise': 'pink_T.wav' };
 
 let audioCtx     = null;
