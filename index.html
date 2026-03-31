@@ -1003,6 +1003,7 @@ let gameStartTime = 0;
 let attemptNo     = 1;
 let currentLevel  = 3;
 let sessionTrial  = 1;
+let sessionId     = '';
 let sessionResults = [];  // [{trial, best, condition, results}]
 
 /* ════════════════════════════════════════
@@ -1154,6 +1155,7 @@ async function saveToServer() {
         gender:       participant.gender,
         age:          participant.birthYear,
         lang,
+        session_id:   sessionId,
         condition,
         duration_sec: Math.round((Date.now() - gameStartTime) / 1000),
         attempt_no:   attemptNo,
@@ -1510,6 +1512,7 @@ document.getElementById('btn-start').addEventListener('click', () => {
 
   participant = { name: '', gender, birthYear };
   sessionTrial = 1;
+  sessionId = 'S' + Date.now().toString(36).toUpperCase();
   sessionResults = [];
   condition = ['40hz', 'pink_noise'][Math.floor(Math.random() * 2)];
   unlockAudio();
@@ -1661,6 +1664,7 @@ if (new URLSearchParams(location.search).has('test')) {
   document.getElementById('tl-start').addEventListener('click', () => {
     overlay.remove();
     sessionTrial = 1;
+    sessionId = 'S' + Date.now().toString(36).toUpperCase();
     sessionResults = [];
     condition = ['40hz', 'pink_noise'][Math.floor(Math.random() * 2)];
     unlockAudio();

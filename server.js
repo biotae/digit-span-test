@@ -94,7 +94,7 @@ async function initGoogleSheets() {
         range:            'Sheet1!A1',
         valueInputOption: 'RAW',
         resource: { values: [[
-          'ID', '언어', '성별', '출생년도', '자극 조건',
+          'ID', '세션ID', '언어', '성별', '출생년도', '자극 조건',
           '최고 Digit', '성공 레벨', '전체 레벨', '소요 시간', '시도 차수', '일시'
         ]] }
       });
@@ -186,7 +186,7 @@ app.use(express.static(__dirname));
 ════════════════════════════════════════ */
 app.post('/api/save', async (req, res) => {
   try {
-    const { name, gender, age, condition, duration_sec, attempt_no, results, lang } = req.body;
+    const { name, gender, age, condition, duration_sec, attempt_no, results, lang, session_id } = req.body;
     if (!gender || !age || !condition || !Array.isArray(results)) {
       return res.status(400).json({ ok: false, error: '필수 항목 누락' });
     }
@@ -213,7 +213,7 @@ app.post('/api/save', async (req, res) => {
 
     // Google Sheets 저장 (비동기, 응답 블로킹 안 함)
     appendToSheet([
-      id, lang || 'ko', gender, parseInt(age, 10),
+      id, session_id || '', lang || 'ko', gender, parseInt(age, 10),
       condition === '40hz' ? '40Hz' : '핑크노이즈',
       max_digits > 0 ? `${max_digits}-Digit` : '–',
       successes.length, results.length,
@@ -330,7 +330,7 @@ app.post('/admin/clear-sheet', async (req, res) => {
       range:            'Sheet1!A1',
       valueInputOption: 'RAW',
       resource: { values: [[
-        'ID', '언어', '성별', '출생년도', '자극 조건',
+        'ID', '세션ID', '언어', '성별', '출생년도', '자극 조건',
         '최고 Digit', '성공 레벨', '전체 레벨', '소요 시간', '시도 차수', '일시'
       ]] }
     });
