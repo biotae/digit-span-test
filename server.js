@@ -100,12 +100,55 @@ async function initGoogleSheets() {
       });
     }
 
+    // Meta 시트 확인/생성 (누적 카운트 오프셋 저장용)
+    try {
+      await sheetsClient.spreadsheets.values.get({
+        spreadsheetId: SPREADSHEET_ID,
+        range: 'Meta!A1',
+      });
+    } catch (_) {
+      // Meta 시트가 없으면 생성
+      try {
+        await sheetsClient.spreadsheets.batchUpdate({
+          spreadsheetId: SPREADSHEET_ID,
+          resource: { requests: [{ addSheet: { properties: { title: 'Meta' } } }] }
+        });
+        await sheetsClient.spreadsheets.values.update({
+          spreadsheetId: SPREADSHEET_ID,
+          range: 'Meta!A1:B1',
+          valueInputOption: 'RAW',
+          resource: { values: [['count_offset', '0']] }
+        });
+      } catch (e2) { console.warn('Meta sheet setup:', e2.message); }
+    }
+
     console.log('✓ Google Sheets 연결 완료');
     console.log(`  시트 ID: ${SPREADSHEET_ID}`);
   } catch (e) {
     console.warn('⚠ Google Sheets 연결 실패:', e.message);
     sheetsClient = null;
   }
+}
+
+async function getCountOffset() {
+  if (!sheetsClient || !SPREADSHEET_ID) return 0;
+  try {
+    const res = await sheetsClient.spreadsheets.values.get({
+      spreadsheetId: SPREADSHEET_ID,
+      range: 'Meta!B1',
+    });
+    return parseInt((res.data.values || [[0]])[0][0], 10) || 0;
+  } catch (_) { return 0; }
+}
+
+async function setCountOffset(val) {
+  if (!sheetsClient || !SPREADSHEET_ID) return;
+  await sheetsClient.spreadsheets.values.update({
+    spreadsheetId: SPREADSHEET_ID,
+    range: 'Meta!B1',
+    valueInputOption: 'RAW',
+    resource: { values: [[String(val)]] }
+  });
 }
 
 async function appendToSheet(rowData) {
@@ -218,8 +261,6 @@ app.get('/api/rank', (req, res) => {
 });
 
 app.get('/api/count', async (req, res) => {
-  // Google Sheets가 연결되어 있으면 시트 행 수로 반환 (재배포에도 유지)
-  // 연결 안 된 경우 SQLite 카운트로 fallback
   if (sheetsClient && SPREADSHEET_ID) {
     try {
       const result = await sheetsClient.spreadsheets.values.get({
@@ -227,8 +268,9 @@ app.get('/api/count', async (req, res) => {
         range: 'Sheet1!A:A',
       });
       const rows = result.data.values || [];
-      // 첫 행은 헤더이므로 -1
-      return res.json({ count: Math.max(0, rows.length - 1) });
+      const current = Math.max(0, rows.length - 1);
+      const offset  = await getCountOffset();
+      return res.json({ count: current + offset });
     } catch (e) {
       console.warn('Sheets count error:', e.message);
     }
@@ -268,6 +310,15 @@ app.post('/admin/clear-sheet', async (req, res) => {
     return res.status(400).json({ ok: false, error: 'Google Sheets 미연결' });
   }
   try {
+    // 현재 행 수를 오프셋에 누적
+    const countRes = await sheetsClient.spreadsheets.values.get({
+      spreadsheetId: SPREADSHEET_ID,
+      range: 'Sheet1!A:A',
+    });
+    const currentRows = Math.max(0, (countRes.data.values || []).length - 1);
+    const prevOffset  = await getCountOffset();
+    await setCountOffset(prevOffset + currentRows);
+
     // 전체 데이터 클리어
     await sheetsClient.spreadsheets.values.clear({
       spreadsheetId: SPREADSHEET_ID,
@@ -279,7 +330,7 @@ app.post('/admin/clear-sheet', async (req, res) => {
       range:            'Sheet1!A1',
       valueInputOption: 'RAW',
       resource: { values: [[
-        'ID', '이름', '성별', '나이', '자극 조건',
+        'ID', '언어', '성별', '출생년도', '자극 조건',
         '최고 Digit', '성공 레벨', '전체 레벨', '소요 시간', '시도 차수', '일시'
       ]] }
     });
