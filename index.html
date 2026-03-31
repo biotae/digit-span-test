@@ -210,7 +210,7 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 1.8rem;
+      gap: 1rem;
       animation: fadeIn .4s ease;
     }
 
@@ -421,6 +421,99 @@
       border: 1px solid rgba(255,255,255,.1);
     }
 
+    /* ══════════════════════════════
+       볼륨 테스트
+    ══════════════════════════════ */
+    .volume-test-area {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: .5rem;
+      margin-bottom: 1rem;
+    }
+    .volume-test-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: .5rem;
+      background: rgba(255,255,255,.07);
+      border: 1px solid rgba(255,255,255,.15);
+      color: var(--muted);
+      font-size: .9rem;
+      padding: .55rem 1.4rem;
+      transition: all .2s;
+    }
+    .volume-test-btn:hover {
+      background: rgba(255,255,255,.12);
+    }
+    .volume-test-btn.playing {
+      background: rgba(74,222,128,.12);
+      border-color: var(--success);
+      color: var(--success);
+      box-shadow: 0 0 16px rgba(74,222,128,.2);
+    }
+    .headphone-icon { flex-shrink: 0; }
+    .volume-indicator {
+      font-size: .75rem;
+      color: var(--muted);
+      min-height: 1rem;
+      letter-spacing: .04em;
+    }
+
+    /* ══════════════════════════════
+       시도 카운터
+    ══════════════════════════════ */
+    .trial-counter {
+      font-size: .82rem;
+      font-weight: 700;
+      letter-spacing: .15em;
+      color: var(--muted);
+      background: rgba(255,255,255,.05);
+      border: 1px solid rgba(255,255,255,.1);
+      border-radius: 50px;
+      padding: .25rem 1rem;
+      margin-bottom: 0;
+    }
+
+    /* ══════════════════════════════
+       세션 요약 화면
+    ══════════════════════════════ */
+    #screen-summary {
+      text-align: center;
+      width: 100%;
+      max-width: 480px;
+      animation: fadeIn .5s ease;
+    }
+    #screen-summary h2 {
+      font-size: clamp(1.5rem, 5vw, 2.2rem);
+      letter-spacing: .1em;
+      margin-bottom: .2rem;
+    }
+    .summary-stats {
+      display: flex;
+      justify-content: center;
+      gap: 2rem;
+      margin-bottom: 1.8rem;
+    }
+    .summary-stat { text-align: center; }
+    .summary-stat-val {
+      font-size: clamp(2rem, 8vw, 3rem);
+      font-weight: 900;
+      background: linear-gradient(135deg, var(--accent), var(--success));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .summary-stat-lbl {
+      font-size: .78rem;
+      color: var(--muted);
+      letter-spacing: .06em;
+    }
+    #summary-chart {
+      display: block;
+      margin: 0 auto 1rem;
+      max-width: 100%;
+    }
+
     .hidden { display: none !important; }
 
     @keyframes fadeIn {
@@ -442,13 +535,21 @@
   <h1>DIGIT SPAN TEST</h1>
   <p class="subtitle" id="txt-subtitle"></p>
   <div class="research-info" id="txt-research-info"></div>
+
+  <div class="volume-test-area">
+    <button class="btn volume-test-btn" id="btn-volume-test">
+      <svg class="headphone-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 18v-6a9 9 0 0 1 18 0v6"/>
+        <path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"/>
+      </svg>
+      <span id="volume-test-label"></span>
+    </button>
+    <div class="volume-indicator" id="volume-indicator"></div>
+  </div>
+
   <div id="participant-count" class="participant-count"></div>
 
   <div class="form-card">
-    <div class="field">
-      <label id="lbl-name"></label>
-      <input type="text" id="inp-name" autocomplete="off" />
-    </div>
     <div class="field">
       <label id="lbl-gender"></label>
       <div class="gender-row">
@@ -461,8 +562,8 @@
       </div>
     </div>
     <div class="field">
-      <label id="lbl-age"></label>
-      <input type="number" id="inp-age" min="1" max="120" autocomplete="off" />
+      <label id="lbl-birth-year"></label>
+      <input type="number" id="inp-birth-year" min="1900" max="2026" autocomplete="off" />
     </div>
   </div>
 
@@ -472,8 +573,9 @@
 
 <!-- ══ 게임 화면 ══ -->
 <div id="screen-game" class="hidden">
+  <div id="trial-counter" class="trial-counter">1 / 10</div>
   <div id="history-bar"></div>
-  <div id="level-badge">3-DIGIT SPAN</div>
+  <div id="level-badge">3 DIGITS</div>
   <div id="digit-card" class="blank"></div>
   <div id="status-msg"></div>
   <div id="input-area" class="hidden"></div>
@@ -504,12 +606,40 @@
     <tbody id="result-tbody"></tbody>
   </table>
 
-  <p class="save-status" id="save-status"></p>
+  <p class="save-status hidden" id="save-status"></p>
   <p class="retry-prompt" id="txt-retry-prompt"></p>
   <div class="retry-buttons">
     <button class="btn btn-retry"   id="btn-retry"></button>
     <button class="btn btn-newuser" id="btn-restart"></button>
   </div>
+</div>
+
+<!-- ══ 세션 요약 화면 ══ -->
+<div id="screen-summary" class="hidden">
+  <h2 id="summary-title">SESSION COMPLETE</h2>
+  <p class="goodbye" id="summary-subtitle"></p>
+
+  <div class="result-meta">
+    <span class="meta-chip" id="summary-name"></span>
+  </div>
+
+  <div class="summary-stats">
+    <div class="summary-stat">
+      <div class="summary-stat-val" id="summary-best">–</div>
+      <div class="summary-stat-lbl" id="summary-best-lbl">최고 기록</div>
+    </div>
+    <div class="summary-stat">
+      <div class="summary-stat-val" id="summary-avg">–</div>
+      <div class="summary-stat-lbl" id="summary-avg-lbl">평균</div>
+    </div>
+  </div>
+
+  <canvas id="summary-chart" width="360" height="220"></canvas>
+
+  <div class="retry-buttons" style="margin-top:1.5rem;">
+    <button class="btn btn-newuser" id="btn-summary-restart"></button>
+  </div>
+  <p class="copyright">© 2026 Tae Kim &amp; Seungyeong Yu.<br>All rights reserved.</p>
 </div>
 
 <script>
@@ -519,12 +649,14 @@
 const T = {
   ko: {
     subtitle:       '화면에 제시된 숫자를 순서대로 기억한 후 입력하세요.<br>숫자 3개로 시작해서, 1개씩 갯수가 늘어납니다.',
-    researchInfo:   `<p>이 연구는 <span class="info-highlight">소리 자극의 종류에 따라 인지기능(작업기억)에 미치는 영향</span>을 알아보기 위한 것입니다.</p><p>숫자가 제시되는 동안 소리 자극이 함께 제공됩니다. <span class="info-highlight">스피커 또는 이어폰을 착용하고 수행해 주십시오.</span> 이어폰 사용 시 불편하지 않은 범위 내에서 가능한 한 크게 설정하시는 것을 권장합니다.</p><p>수집된 정보(이름, 성별, 나이, 수행 결과)는 <span class="info-highlight">연구 목적으로만 사용</span>되며, 연구 이외의 목적으로는 활용되지 않습니다.</p>`,
+    researchInfo:   `<p>이 연구는 <span class="info-highlight">소리 자극의 종류에 따라 인지기능(작업기억)에 미치는 영향</span>을 알아보기 위한 것입니다.</p><p>숫자가 제시되는 동안 소리 자극이 함께 제공됩니다. <span class="info-highlight">헤드폰 또는 이어폰을 착용하고 수행해 주십시오.</span> 아래 볼륨 테스트 버튼을 눌러 음량을 조절하시기 바랍니다. 불편하지 않은 범위 내에서 가능한 한 크게 설정하시는 것을 권장합니다.</p><p>수집된 정보(성별, 출생년도, 수행 결과)는 <span class="info-highlight">연구 목적으로만 사용</span>되며, 연구 이외의 목적으로는 활용되지 않습니다.</p>`,
+    volumeTest:     '볼륨 테스트',
+    volumePlaying:  '재생 중…',
     countLabel:     n => `누적 체험자 <span class="count-num">${n.toLocaleString()}</span> 명`,
-    labelName:      '이름',      placeholderName:   '홍길동',
     labelGender:    '성별',
     gMale: '남성', gFemale: '여성', gOther: '기타',
-    labelAge:       '나이',      placeholderAge:    '25',
+    labelBirthYear: '출생년도',  placeholderBirthYear: '1990',
+    alertBirthYear: '출생년도를 올바르게 입력해 주세요.',
     ready:          '준비…',
     inputPrompt:    '기억한 순서대로 입력하세요',
     correct:        '✓ 정답!',   wrong:             '✗ 오답',
@@ -535,25 +667,33 @@ const T = {
     saving:         '저장 중…',
     saved:          id => `✓ 결과 저장 완료 (세션 #${id})`,
     saveError:      '⚠ 저장 실패 (서버 미연결)',
-    retryPrompt:    '재도전 하시겠습니까?',
-    btnRetry:       '재도전',
+    retryPrompt:    '',
+    btnRetry:       '다시 시작',
     btnNewUser:     '새 참가자',
-    alertName:      '이름을 입력해 주세요.',
+    trialCounter:   (cur, total) => `${cur} / ${total}`,
+    sessionComplete:'세션 완료',
+    summarySubtitle:'모든 테스트가 완료되었습니다',
+    summaryBestLbl: '최고 기록',
+    summaryAvgLbl:  '평균',
+    trialLabel:     '회차',
+    allTrialsDone:  '모든 시도가 완료되었습니다',
+    btnViewSummary: '종합 결과 보기',
     alertGender:    '성별을 선택해 주세요.',
-    alertAge:       '나이를 올바르게 입력해 주세요.',
     resultOk:       '성공',      resultNg:          '실패',
 
-    metaAge:        age => `${age}세`,
+    metaBirthYear:  year => `${year}년생`,
     metaAttempt:    n => n > 1 ? ` · ${n}차 시도` : '',
   },
   en: {
     subtitle:       'Watch the digits, then type them back.<br>Starts at 3 — one more after each success.',
-    researchInfo:   `<p>This study investigates how <span class="info-highlight">different types of auditory stimuli affect cognitive function (working memory)</span>.</p><p>Auditory stimuli will play alongside the digit sequences. <span class="info-highlight">Please use speakers or earphones during the task.</span> We recommend setting the volume as high as is comfortable.</p><p>Information collected (name, gender, age, and performance) will be used <span class="info-highlight">solely for research purposes</span> and will not be shared or used otherwise.</p>`,
+    researchInfo:   `<p>This study investigates how <span class="info-highlight">different types of auditory stimuli affect cognitive function (working memory)</span>.</p><p>Auditory stimuli will play alongside the digit sequences. <span class="info-highlight">Please wear headphones or earphones during the task.</span> Use the volume test button below to adjust your volume. We recommend setting it as high as is comfortable.</p><p>Information collected (gender, birth year, and performance) will be used <span class="info-highlight">solely for research purposes</span> and will not be shared or used otherwise.</p>`,
+    volumeTest:     'Volume Test',
+    volumePlaying:  'Playing…',
     countLabel:     n => `<span class="count-num">${n.toLocaleString()}</span> participants so far`,
-    labelName:      'Name',      placeholderName:   'Jane Doe',
     labelGender:    'Gender',
     gMale: 'Male', gFemale: 'Female', gOther: 'Other',
-    labelAge:       'Age',       placeholderAge:    '25',
+    labelBirthYear: 'Birth Year', placeholderBirthYear: '1990',
+    alertBirthYear: 'Please enter a valid birth year.',
     ready:          'Get ready…',
     inputPrompt:    'Enter the digits in order',
     correct:        '✓ Correct!', wrong:            '✗ Wrong',
@@ -564,25 +704,33 @@ const T = {
     saving:         'Saving…',
     saved:          id => `✓ Saved (Session #${id})`,
     saveError:      '⚠ Save failed (server unavailable)',
-    retryPrompt:    'Would you like to try again?',
-    btnRetry:       'Try Again',
+    retryPrompt:    '',
+    btnRetry:       'Next Trial',
     btnNewUser:     'New Participant',
-    alertName:      'Please enter your name.',
+    trialCounter:   (cur, total) => `${cur} / ${total}`,
+    sessionComplete:'SESSION COMPLETE',
+    summarySubtitle:'All trials have been completed',
+    summaryBestLbl: 'Best',
+    summaryAvgLbl:  'Average',
+    trialLabel:     'Trial',
+    allTrialsDone:  'All trials completed',
+    btnViewSummary: 'View Summary',
     alertGender:    'Please select your gender.',
-    alertAge:       'Please enter a valid age.',
 
     resultOk:       'Pass',      resultNg:          'Fail',
-    metaAge:        age => `${age} y/o`,
+    metaBirthYear:  year => `Born ${year}`,
     metaAttempt:    n => n > 1 ? ` · Attempt ${n}` : '',
   },
   zh: {
     subtitle:       '记住数字，按顺序输入。<br>从3位开始，答对一次加一位。',
-    researchInfo:   `<p>本研究旨在探讨<span class="info-highlight">不同类型听觉刺激对认知功能（工作记忆）的影响</span>。</p><p>数字呈现期间将同步播放听觉刺激，<span class="info-highlight">请使用扬声器或耳机参与测试。</span>建议在不感到不适的前提下尽量调高音量。</p><p>所收集的信息（姓名、性别、年龄及测试结果）<span class="info-highlight">仅用于研究目的</span>，不会用于任何其他用途。</p>`,
+    researchInfo:   `<p>本研究旨在探讨<span class="info-highlight">不同类型听觉刺激对认知功能（工作记忆）的影响</span>。</p><p>数字呈现期间将同步播放听觉刺激，<span class="info-highlight">请佩戴耳机参与测试。</span>请使用下方的音量测试按钮调节音量。建议在不感到不适的前提下尽量调高音量。</p><p>所收集的信息（性别、出生年份及测试结果）<span class="info-highlight">仅用于研究目的</span>，不会用于任何其他用途。</p>`,
+    volumeTest:     '音量测试',
+    volumePlaying:  '播放中…',
     countLabel:     n => `已有 <span class="count-num">${n.toLocaleString()}</span> 人参与`,
-    labelName:      '姓名',      placeholderName:   '张三',
     labelGender:    '性别',
     gMale: '男', gFemale: '女', gOther: '其他',
-    labelAge:       '年龄',      placeholderAge:    '25',
+    labelBirthYear: '出生年份',  placeholderBirthYear: '1990',
+    alertBirthYear: '请输入有效的出生年份。',
     ready:          '准备中…',
     inputPrompt:    '请按顺序输入数字',
     correct:        '✓ 正确！',  wrong:             '✗ 错误',
@@ -593,15 +741,21 @@ const T = {
     saving:         '保存中…',
     saved:          id => `✓ 已保存（会话 #${id}）`,
     saveError:      '⚠ 保存失败（服务器不可用）',
-    retryPrompt:    '是否再试一次？',
-    btnRetry:       '再试一次',
+    retryPrompt:    '',
+    btnRetry:       '下一轮',
     btnNewUser:     '新参与者',
-    alertName:      '请输入您的姓名。',
+    trialCounter:   (cur, total) => `${cur} / ${total}`,
+    sessionComplete:'测试完成',
+    summarySubtitle:'所有测试已完成',
+    summaryBestLbl: '最高成绩',
+    summaryAvgLbl:  '平均',
+    trialLabel:     '轮次',
+    allTrialsDone:  '所有测试已完成',
+    btnViewSummary: '查看综合结果',
     alertGender:    '请选择您的性别。',
-    alertAge:       '请输入有效的年龄。',
 
     resultOk:       '成功',      resultNg:          '失败',
-    metaAge:        age => `${age}岁`,
+    metaBirthYear:  year => `${year}年生`,
     metaAttempt:    n => n > 1 ? ` · 第${n}次` : '',
   }
 };
@@ -620,14 +774,18 @@ function applyLang() {
   // 시작 화면
   document.getElementById('txt-subtitle').innerHTML    = t.subtitle;
   document.getElementById('txt-research-info').innerHTML = t.researchInfo;
-  document.getElementById('lbl-name').textContent   = t.labelName;
-  document.getElementById('inp-name').placeholder   = t.placeholderName;
   document.getElementById('lbl-gender').textContent = t.labelGender;
   document.getElementById('lbl-g-male').textContent   = t.gMale;
   document.getElementById('lbl-g-female').textContent = t.gFemale;
   document.getElementById('lbl-g-other').textContent  = t.gOther;
-  document.getElementById('lbl-age').textContent    = t.labelAge;
-  document.getElementById('inp-age').placeholder    = t.placeholderAge;
+  document.getElementById('lbl-birth-year').textContent    = t.labelBirthYear;
+  document.getElementById('inp-birth-year').placeholder    = t.placeholderBirthYear;
+
+  // 볼륨 테스트
+  const volBtn = document.getElementById('btn-volume-test');
+  if (!volBtn.classList.contains('playing')) {
+    document.getElementById('volume-test-label').textContent = t.volumeTest;
+  }
 
   // 게임 화면
   document.getElementById('btn-confirm').textContent = t.btnConfirm;
@@ -642,6 +800,11 @@ function applyLang() {
   document.getElementById('txt-retry-prompt').textContent = t.retryPrompt;
   document.getElementById('btn-retry').textContent       = t.btnRetry;
   document.getElementById('btn-restart').textContent     = t.btnNewUser;
+
+  // 세션 요약 화면
+  document.getElementById('summary-best-lbl').textContent = t.summaryBestLbl;
+  document.getElementById('summary-avg-lbl').textContent  = t.summaryAvgLbl;
+  document.getElementById('btn-summary-restart').textContent = t.btnNewUser;
 
   // 참가자 카운트 재적용 (이미 로드된 경우)
   if (_lastCount !== null) renderCount(_lastCount);
@@ -743,6 +906,7 @@ function randDigitSeq(len) {
 const $start      = document.getElementById('screen-start');
 const $game       = document.getElementById('screen-game');
 const $result     = document.getElementById('screen-result');
+const $summary    = document.getElementById('screen-summary');
 const $badge      = document.getElementById('level-badge');
 const $card       = document.getElementById('digit-card');
 const $status     = document.getElementById('status-msg');
@@ -757,18 +921,21 @@ const $saveStatus = document.getElementById('save-status');
 /* ════════════════════════════════════════
    게임 상태
 ════════════════════════════════════════ */
+const MAX_TRIALS  = 5;
 let participant   = { name: '', gender: '', age: 0 };
 let condition     = '';   // '40hz' | 'pink_noise'
 let gameResults   = [];
 let gameStartTime = 0;
 let attemptNo     = 1;
 let currentLevel  = 3;
+let sessionTrial  = 1;
+let sessionResults = [];  // [{trial, best, condition, results}]
 
 /* ════════════════════════════════════════
    화면 전환
 ════════════════════════════════════════ */
 function showScreen(el) {
-  [$start, $game, $result].forEach(s => s.classList.add('hidden'));
+  [$start, $game, $result, $summary].forEach(s => s.classList.add('hidden'));
   el.classList.remove('hidden');
 }
 
@@ -873,7 +1040,7 @@ function waitForInput(seq) {
 async function runLevel(level) {
   const seq = randDigitSeq(level);
   const t   = T[lang];
-  $badge.textContent  = `${level}-DIGIT SPAN`;
+  $badge.textContent  = `${level} DIGITS`;
   $card.textContent   = '';
   $card.className     = 'blank';
   $status.textContent = t.ready;
@@ -909,9 +1076,9 @@ async function saveToServer() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        name:         participant.name,
+        name:         '',
         gender:       participant.gender,
-        age:          participant.age,
+        age:          participant.birthYear,
         condition,
         duration_sec: Math.round((Date.now() - gameStartTime) / 1000),
         attempt_no:   attemptNo,
@@ -940,11 +1107,14 @@ async function showResult() {
   const successes = gameResults.filter(r => r.success);
   const best = successes.length > 0 ? Math.max(...successes.map(r => r.level)) : 0;
 
+  // 세션 결과 기록
+  sessionResults.push({ trial: sessionTrial, best, condition, results: [...gameResults] });
+
   $resBest.textContent = best > 0 ? `${best}-Digit` : '–';
 
   $resName.textContent =
-    `${participant.name} · ${participant.gender} · ${t.metaAge(participant.age)}` +
-    t.metaAttempt(attemptNo);
+    `${participant.gender} · ${t.metaBirthYear(participant.birthYear)}` +
+    ` · ${t.trialCounter(sessionTrial, MAX_TRIALS)}`;
 
   $resTbody.innerHTML = gameResults.map(r => {
     const cls = r.success ? 'ok' : 'ng';
@@ -957,6 +1127,18 @@ async function showResult() {
     </tr>`;
   }).join('');
 
+  // 10회차 완료 시 버튼 변경
+  const $btnRetry = document.getElementById('btn-retry');
+  if (sessionTrial >= MAX_TRIALS) {
+    document.getElementById('txt-retry-prompt').textContent = t.allTrialsDone;
+    $btnRetry.textContent = t.btnViewSummary;
+    $btnRetry.onclick = () => showSessionSummary();
+  } else {
+    document.getElementById('txt-retry-prompt').textContent = t.retryPrompt;
+    $btnRetry.textContent = t.btnRetry;
+    $btnRetry.onclick = null;  // 기본 이벤트 리스너 사용
+  }
+
   showScreen($result);
   await saveToServer();
 }
@@ -965,10 +1147,18 @@ async function showResult() {
    게임 루프
 ════════════════════════════════════════ */
 async function runGame() {
+  // 볼륨 테스트 정지
+  if (_volTestPlaying) {
+    if (_volTestNode) { try { _volTestNode.stop(); } catch (_) {} _volTestNode = null; }
+    document.getElementById('btn-volume-test').classList.remove('playing');
+    document.getElementById('volume-test-label').textContent = T[lang].volumeTest;
+    _volTestPlaying = false;
+  }
   gameResults   = [];
   currentLevel  = 3;
   gameStartTime = Date.now();
   $histBar.innerHTML = '';
+  document.getElementById('trial-counter').textContent = T[lang].trialCounter(sessionTrial, MAX_TRIALS);
   showScreen($game);
 
   while (true) {
@@ -979,6 +1169,110 @@ async function runGame() {
 
   await sleep(400);
   await showResult();
+}
+
+/* ════════════════════════════════════════
+   세션 요약
+════════════════════════════════════════ */
+function showSessionSummary() {
+  const t = T[lang];
+  const bests = sessionResults.map(r => r.best);
+  const best  = Math.max(...bests);
+  const avg   = (bests.reduce((a, b) => a + b, 0) / bests.length).toFixed(1);
+
+  document.getElementById('summary-title').textContent    = t.sessionComplete;
+  document.getElementById('summary-subtitle').textContent = t.summarySubtitle;
+  document.getElementById('summary-name').textContent =
+    `${participant.gender} · ${t.metaBirthYear(participant.birthYear)}`;
+  document.getElementById('summary-best').textContent     = `${best}-Digit`;
+  document.getElementById('summary-best-lbl').textContent = t.summaryBestLbl;
+  document.getElementById('summary-avg').textContent      = avg;
+  document.getElementById('summary-avg-lbl').textContent  = t.summaryAvgLbl;
+  document.getElementById('btn-summary-restart').textContent = t.btnNewUser;
+
+  drawSummaryChart(bests, t);
+  showScreen($summary);
+}
+
+function drawSummaryChart(bests, t) {
+  const canvas = document.getElementById('summary-chart');
+  const dpr    = window.devicePixelRatio || 1;
+  const W      = 360, H = 220;
+  canvas.width  = W * dpr;
+  canvas.height = H * dpr;
+  canvas.style.width  = W + 'px';
+  canvas.style.height = H + 'px';
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+
+  const pad    = { top: 20, right: 15, bottom: 35, left: 35 };
+  const chartW = W - pad.left - pad.right;
+  const chartH = H - pad.top - pad.bottom;
+  const maxVal = Math.max(...bests, 5);
+  const barW   = chartW / bests.length * 0.6;
+  const gap    = chartW / bests.length;
+
+  // 배경
+  ctx.fillStyle = '#0d0d1a';
+  ctx.fillRect(0, 0, W, H);
+
+  // 그리드 라인
+  ctx.strokeStyle = 'rgba(255,255,255,.06)';
+  ctx.lineWidth   = 1;
+  for (let v = 0; v <= maxVal; v++) {
+    const y = pad.top + chartH - (v / maxVal) * chartH;
+    ctx.beginPath();
+    ctx.moveTo(pad.left, y);
+    ctx.lineTo(W - pad.right, y);
+    ctx.stroke();
+    // Y축 라벨
+    ctx.fillStyle = '#6b6b90';
+    ctx.font = '11px system-ui';
+    ctx.textAlign = 'right';
+    ctx.fillText(v, pad.left - 6, y + 4);
+  }
+
+  // 바 그리기
+  bests.forEach((val, i) => {
+    const x = pad.left + i * gap + (gap - barW) / 2;
+    const barH = (val / maxVal) * chartH;
+    const y = pad.top + chartH - barH;
+
+    // 그라디언트
+    const grad = ctx.createLinearGradient(x, y, x, y + barH);
+    grad.addColorStop(0, '#5e81f4');
+    grad.addColorStop(1, '#f45e81');
+    ctx.fillStyle = grad;
+
+    // 둥근 바
+    const r = Math.min(4, barW / 2);
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + barW - r, y);
+    ctx.quadraticCurveTo(x + barW, y, x + barW, y + r);
+    ctx.lineTo(x + barW, y + barH);
+    ctx.lineTo(x, y + barH);
+    ctx.lineTo(x, y + r);
+    ctx.quadraticCurveTo(x, y, x + r, y);
+    ctx.fill();
+
+    // 바 위에 값 표시
+    ctx.fillStyle = '#e8e8f0';
+    ctx.font = 'bold 12px system-ui';
+    ctx.textAlign = 'center';
+    ctx.fillText(val, x + barW / 2, y - 5);
+
+    // X축 라벨
+    ctx.fillStyle = '#6b6b90';
+    ctx.font = '11px system-ui';
+    ctx.fillText(i + 1, x + barW / 2, H - pad.bottom + 16);
+  });
+
+  // X축 제목
+  ctx.fillStyle = '#6b6b90';
+  ctx.font = '11px system-ui';
+  ctx.textAlign = 'center';
+  ctx.fillText(t.trialLabel, W / 2, H - 2);
 }
 
 /* ════════════════════════════════════════
@@ -1005,34 +1299,111 @@ async function loadParticipantCount() {
    이벤트 핸들러
 ════════════════════════════════════════ */
 document.getElementById('btn-start').addEventListener('click', () => {
-  const t      = T[lang];
-  const name   = document.getElementById('inp-name').value.trim();
-  const gender = document.querySelector('input[name="gender"]:checked')?.value ?? '';
-  const age    = parseInt(document.getElementById('inp-age').value, 10);
+  const t         = T[lang];
+  const gender    = document.querySelector('input[name="gender"]:checked')?.value ?? '';
+  const birthYear = parseInt(document.getElementById('inp-birth-year').value, 10);
 
-  if (!name)           return alert(t.alertName);
-  if (!gender)         return alert(t.alertGender);
-  if (!age || age < 1) return alert(t.alertAge);
+  if (!gender)                              return alert(t.alertGender);
+  if (!birthYear || birthYear < 1900 || birthYear > 2026) return alert(t.alertBirthYear);
 
-  participant = { name, gender, age };
+  participant = { name: '', gender, birthYear };
+  sessionTrial = 1;
+  sessionResults = [];
   condition = ['40hz', 'pink_noise'][Math.floor(Math.random() * 2)];
   unlockAudio();
   runGame();
 });
 
 document.getElementById('btn-retry').addEventListener('click', () => {
+  // onclick이 설정되어 있으면 (10회차 완료 시) 그쪽이 실행됨
+  if (document.getElementById('btn-retry').onclick) return;
+  sessionTrial++;
   attemptNo++;
   unlockAudio();
   runGame();
 });
 
-document.getElementById('btn-restart').addEventListener('click', () => {
+function resetSession() {
   attemptNo = 1;
-  document.getElementById('inp-name').value = '';
-  document.getElementById('inp-age').value  = '';
+  sessionTrial = 1;
+  sessionResults = [];
+  document.getElementById('inp-birth-year').value = '';
   document.querySelectorAll('input[name="gender"]').forEach(r => r.checked = false);
+  // btn-retry 초기화
+  const $btnRetry = document.getElementById('btn-retry');
+  $btnRetry.onclick = null;
+  $btnRetry.textContent = T[lang].btnRetry;
   showScreen($start);
   loadParticipantCount();
+}
+
+document.getElementById('btn-restart').addEventListener('click', resetSession);
+document.getElementById('btn-summary-restart').addEventListener('click', resetSession);
+
+/* ════════════════════════════════════════
+   볼륨 테스트 토글
+════════════════════════════════════════ */
+let _volTestNode   = null;
+let _volTestPlaying = false;
+
+document.getElementById('btn-volume-test').addEventListener('click', () => {
+  const btn  = document.getElementById('btn-volume-test');
+  const lbl  = document.getElementById('volume-test-label');
+  const t    = T[lang];
+
+  if (_volTestPlaying) {
+    // 정지
+    if (_volTestNode) { try { _volTestNode.stop(); } catch (_) {} _volTestNode = null; }
+    btn.classList.remove('playing');
+    lbl.textContent = t.volumeTest;
+    _volTestPlaying = false;
+    return;
+  }
+
+  // 재생 시작 — 오디오 컨텍스트 초기화
+  const ctx  = getAudioCtx();
+  getMasterGain();
+
+  // 40Hz 샘플을 볼륨 테스트용으로 사용
+  const testKey = '40hz';
+  const testUrl = STIMULUS_SRC[testKey];
+
+  async function startPlayback() {
+    if (!audioBuffers[testKey]) {
+      try {
+        const res = await fetch(testUrl);
+        const raw = await res.arrayBuffer();
+        audioBuffers[testKey] = await ctx.decodeAudioData(raw);
+      } catch (e) { console.warn('Volume test load failed:', e); return; }
+    }
+
+    const buf  = audioBuffers[testKey];
+    const gain = getMasterGain();
+    gain.gain.cancelScheduledValues(0);
+    gain.gain.value = 1;
+
+    _volTestPlaying = true;
+    btn.classList.add('playing');
+    lbl.textContent = t.volumePlaying;
+
+    function playLoop() {
+      if (!_volTestPlaying) return;
+      const src = ctx.createBufferSource();
+      src.buffer = buf;
+      src.connect(gain);
+      const t0 = ctx.currentTime + 0.01;
+      src.start(t0);
+      src.stop(t0 + 0.5);
+      _volTestNode = src;
+      src.onended = () => {
+        if (!_volTestPlaying) return;
+        setTimeout(playLoop, 500);  // 0.5초 pause
+      };
+    }
+    playLoop();
+  }
+
+  startPlayback();
 });
 
 /* ════════════════════════════════════════
@@ -1043,7 +1414,7 @@ loadParticipantCount();
 
 // 테스트 바이패스: URL에 ?test 포함 시 탭 한 번으로 시작 (autoplay 정책 충족)
 if (new URLSearchParams(location.search).has('test')) {
-  participant  = { name: 'TEST', gender: '남성', age: 99 };
+  participant  = { name: '', gender: '남성', birthYear: 1990 };
 
   const overlay = document.createElement('div');
   overlay.style.cssText = [
@@ -1087,6 +1458,8 @@ if (new URLSearchParams(location.search).has('test')) {
 
   document.getElementById('tl-start').addEventListener('click', () => {
     overlay.remove();
+    sessionTrial = 1;
+    sessionResults = [];
     condition = ['40hz', 'pink_noise'][Math.floor(Math.random() * 2)];
     unlockAudio();
     runGame();

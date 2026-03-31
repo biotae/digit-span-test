@@ -94,7 +94,7 @@ async function initGoogleSheets() {
         range:            'Sheet1!A1',
         valueInputOption: 'RAW',
         resource: { values: [[
-          'ID', '이름', '성별', '나이', '자극 조건',
+          'ID', '성별', '출생년도', '자극 조건',
           '최고 Digit', '성공 레벨', '전체 레벨', '소요 시간', '시도 차수', '일시'
         ]] }
       });
@@ -170,8 +170,8 @@ app.post('/api/save', async (req, res) => {
 
     // Google Sheets 저장 (비동기, 응답 블로킹 안 함)
     appendToSheet([
-      id, name.trim(), gender, parseInt(age, 10),
-      condition === '8hz' ? '8Hz' : condition === '40hz' ? '40Hz' : '핑크노이즈',
+      id, gender, parseInt(age, 10),
+      condition === '40hz' ? '40Hz' : '핑크노이즈',
       max_digits > 0 ? `${max_digits}-Digit` : '–',
       successes.length, results.length,
       durLabel,
