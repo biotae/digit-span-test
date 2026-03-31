@@ -386,6 +386,46 @@
     #result-table td.ok { color: var(--success); font-weight: 700; }
     #result-table td.ng { color: var(--fail);    font-weight: 700; }
 
+    /* ══════════════════════════════
+       랭킹 섹션
+    ══════════════════════════════ */
+    .rank-section {
+      background: rgba(94,129,244,.06);
+      border: 1px solid rgba(94,129,244,.15);
+      border-radius: 16px;
+      padding: 1rem 1.2rem;
+      margin-bottom: 1.4rem;
+    }
+    .rank-label {
+      font-size: .75rem;
+      font-weight: 700;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: .5rem;
+    }
+    .rank-info {
+      display: flex;
+      justify-content: center;
+      gap: 1rem;
+      margin-bottom: .8rem;
+    }
+    .rank-percentile {
+      font-size: 1.3rem;
+      font-weight: 900;
+      color: var(--accent);
+    }
+    .rank-detail {
+      font-size: .85rem;
+      color: var(--muted);
+      align-self: center;
+    }
+    #rank-chart {
+      display: block;
+      margin: 0 auto;
+      max-width: 100%;
+    }
+
     .save-status {
       font-size: .78rem;
       color: var(--muted);
@@ -652,6 +692,15 @@
 
   <canvas id="summary-chart" width="360" height="220"></canvas>
 
+  <div id="summary-rank-section" class="rank-section hidden">
+    <div class="rank-label" id="summary-rank-label"></div>
+    <div class="rank-info">
+      <span class="rank-percentile" id="summary-rank-percentile"></span>
+      <span class="rank-detail" id="summary-rank-detail"></span>
+    </div>
+    <canvas id="summary-rank-chart" width="320" height="130"></canvas>
+  </div>
+
   <div class="retry-buttons" style="margin-top:1.5rem;">
     <button class="btn btn-newuser" id="btn-summary-restart"></button>
   </div>
@@ -668,7 +717,7 @@ const T = {
     researchInfo:   `<p>이 연구는 <span class="info-highlight">소리 자극의 종류에 따라 인지기능(작업기억)에 미치는 영향</span>을 알아보기 위한 것입니다.</p><p>숫자가 제시되는 동안 소리 자극이 함께 제공됩니다. <span class="info-highlight">헤드폰 또는 이어폰을 착용하고 수행해 주십시오.</span> 아래 볼륨 테스트 버튼을 눌러 음량을 조절하시기 바랍니다. 불편하지 않은 범위 내에서 가능한 한 크게 설정하시는 것을 권장합니다.</p><p>수집된 정보(성별, 출생년도, 수행 결과)는 <span class="info-highlight">연구 목적으로만 사용</span>되며, 연구 이외의 목적으로는 활용되지 않습니다.</p>`,
     volumeTest:     '볼륨 테스트',
     volumePlaying:  '재생 중…',
-    countLabel:     n => `누적 체험자 <span class="count-num">${n.toLocaleString()}</span> 명`,
+    countLabel:     n => `누적 측정 <span class="count-num">${n.toLocaleString()}</span> 회`,
     labelGender:    '성별',
     gMale: '남성', gFemale: '여성', gOther: '기타',
     labelBirthYear: '출생년도',  placeholderBirthYear: '1990',
@@ -699,13 +748,16 @@ const T = {
 
     metaBirthYear:  year => `${year}년생`,
     metaAttempt:    n => n > 1 ? ` · ${n}차 시도` : '',
+    rankLabel:      '최고 기록 기준 랭킹',
+    rankTop:        pct => `상위 ${pct}%`,
+    rankOf:         (rank, total) => `${total}회 측정 중 ${rank}위`,
   },
   en: {
     subtitle:       'Watch the digits, then type them back.<br>Starts at 3 — one more after each success.',
     researchInfo:   `<p>This study investigates how <span class="info-highlight">different types of auditory stimuli affect cognitive function (working memory)</span>.</p><p>Auditory stimuli will play alongside the digit sequences. <span class="info-highlight">Please wear headphones or earphones during the task.</span> Use the volume test button below to adjust your volume. We recommend setting it as high as is comfortable.</p><p>Information collected (gender, birth year, and performance) will be used <span class="info-highlight">solely for research purposes</span> and will not be shared or used otherwise.</p>`,
     volumeTest:     'Volume Test',
     volumePlaying:  'Playing…',
-    countLabel:     n => `<span class="count-num">${n.toLocaleString()}</span> participants so far`,
+    countLabel:     n => `<span class="count-num">${n.toLocaleString()}</span> tests completed`,
     labelGender:    'Gender',
     gMale: 'Male', gFemale: 'Female', gOther: 'Other',
     labelBirthYear: 'Birth Year', placeholderBirthYear: '1990',
@@ -736,13 +788,16 @@ const T = {
     resultOk:       'Pass',      resultNg:          'Fail',
     metaBirthYear:  year => `Born ${year}`,
     metaAttempt:    n => n > 1 ? ` · Attempt ${n}` : '',
+    rankLabel:      'Ranking by Best Performance',
+    rankTop:        pct => `Top ${pct}%`,
+    rankOf:         (rank, total) => `#${rank} of ${total} tests`,
   },
   zh: {
     subtitle:       '记住数字，按顺序输入。<br>从3位开始，答对一次加一位。',
     researchInfo:   `<p>本研究旨在探讨<span class="info-highlight">不同类型听觉刺激对认知功能（工作记忆）的影响</span>。</p><p>数字呈现期间将同步播放听觉刺激，<span class="info-highlight">请佩戴耳机参与测试。</span>请使用下方的音量测试按钮调节音量。建议在不感到不适的前提下尽量调高音量。</p><p>所收集的信息（性别、出生年份及测试结果）<span class="info-highlight">仅用于研究目的</span>，不会用于任何其他用途。</p>`,
     volumeTest:     '音量测试',
     volumePlaying:  '播放中…',
-    countLabel:     n => `已有 <span class="count-num">${n.toLocaleString()}</span> 人参与`,
+    countLabel:     n => `累计测试 <span class="count-num">${n.toLocaleString()}</span> 次`,
     labelGender:    '性别',
     gMale: '男', gFemale: '女', gOther: '其他',
     labelBirthYear: '出生年份',  placeholderBirthYear: '1990',
@@ -773,6 +828,9 @@ const T = {
     resultOk:       '成功',      resultNg:          '失败',
     metaBirthYear:  year => `${year}年生`,
     metaAttempt:    n => n > 1 ? ` · 第${n}次` : '',
+    rankLabel:      '最佳成绩排名',
+    rankTop:        pct => `前 ${pct}%`,
+    rankOf:         (rank, total) => `共${total}次测试中第${rank}名`,
   }
 };
 
@@ -1095,6 +1153,7 @@ async function saveToServer() {
         name:         '',
         gender:       participant.gender,
         age:          participant.birthYear,
+        lang,
         condition,
         duration_sec: Math.round((Date.now() - gameStartTime) / 1000),
         attempt_no:   attemptNo,
@@ -1188,9 +1247,133 @@ async function runGame() {
 }
 
 /* ════════════════════════════════════════
+   랭킹 & 정규분포 시각화
+════════════════════════════════════════ */
+async function loadSummaryRanking(myScore) {
+  const rankSection = document.getElementById('summary-rank-section');
+  if (myScore <= 0) { rankSection.classList.add('hidden'); return; }
+
+  try {
+    const res = await fetch(`/api/rank?score=${myScore}`);
+    const data = await res.json();
+    if (data.total < 2) { rankSection.classList.add('hidden'); return; }
+
+    const t = T[lang];
+    const topPct = Math.max(1, 100 - data.percentile);
+
+    document.getElementById('summary-rank-label').textContent       = t.rankLabel;
+    document.getElementById('summary-rank-percentile').textContent   = t.rankTop(topPct);
+    document.getElementById('summary-rank-detail').textContent       = t.rankOf(data.rank, data.total);
+    rankSection.classList.remove('hidden');
+
+    drawNormalDistChart(data.mean, data.std, myScore);
+  } catch (e) {
+    console.warn('Rank load failed:', e);
+    rankSection.classList.add('hidden');
+  }
+}
+
+function drawNormalDistChart(mean, std, myScore) {
+  const canvas = document.getElementById('summary-rank-chart');
+  const dpr    = window.devicePixelRatio || 1;
+  const W = 320, H = 130;
+  canvas.width  = W * dpr;
+  canvas.height = H * dpr;
+  canvas.style.width  = W + 'px';
+  canvas.style.height = H + 'px';
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+
+  const pad  = { top: 10, right: 15, bottom: 25, left: 15 };
+  const cW   = W - pad.left - pad.right;
+  const cH   = H - pad.top - pad.bottom;
+
+  // x 범위: mean ± 3.5 std
+  const xMin = Math.max(0, mean - 3.5 * std);
+  const xMax = mean + 3.5 * std;
+
+  function normPdf(x) {
+    const z = (x - mean) / std;
+    return Math.exp(-0.5 * z * z) / (std * Math.sqrt(2 * Math.PI));
+  }
+
+  function xToCanvas(x) { return pad.left + ((x - xMin) / (xMax - xMin)) * cW; }
+
+  // 곡선의 최대 높이
+  const peakY = normPdf(mean);
+
+  function yToCanvas(y) { return pad.top + cH - (y / peakY) * cH * 0.9; }
+
+  ctx.fillStyle = '#0d0d1a';
+  ctx.fillRect(0, 0, W, H);
+
+  // 곡선 아래 채우기
+  ctx.beginPath();
+  const steps = 100;
+  for (let i = 0; i <= steps; i++) {
+    const x = xMin + (i / steps) * (xMax - xMin);
+    const cx = xToCanvas(x);
+    const cy = yToCanvas(normPdf(x));
+    if (i === 0) ctx.moveTo(cx, cy); else ctx.lineTo(cx, cy);
+  }
+  ctx.lineTo(xToCanvas(xMax), yToCanvas(0));
+  ctx.lineTo(xToCanvas(xMin), yToCanvas(0));
+  ctx.closePath();
+  ctx.fillStyle = 'rgba(94,129,244,.1)';
+  ctx.fill();
+
+  // 곡선
+  ctx.beginPath();
+  for (let i = 0; i <= steps; i++) {
+    const x = xMin + (i / steps) * (xMax - xMin);
+    const cx = xToCanvas(x);
+    const cy = yToCanvas(normPdf(x));
+    if (i === 0) ctx.moveTo(cx, cy); else ctx.lineTo(cx, cy);
+  }
+  ctx.strokeStyle = 'rgba(94,129,244,.5)';
+  ctx.lineWidth   = 2;
+  ctx.stroke();
+
+  // 본인 위치 - 수직선
+  const myX = xToCanvas(myScore);
+  const myY = yToCanvas(normPdf(myScore));
+  ctx.beginPath();
+  ctx.moveTo(myX, yToCanvas(0));
+  ctx.lineTo(myX, myY);
+  ctx.strokeStyle = '#f45e81';
+  ctx.lineWidth   = 2;
+  ctx.stroke();
+
+  // 본인 위치 - 점
+  ctx.beginPath();
+  ctx.arc(myX, myY, 5, 0, Math.PI * 2);
+  ctx.fillStyle = '#f45e81';
+  ctx.fill();
+  ctx.strokeStyle = '#fff';
+  ctx.lineWidth   = 1.5;
+  ctx.stroke();
+
+  // 라벨
+  ctx.fillStyle = '#f45e81';
+  ctx.font      = 'bold 11px system-ui';
+  ctx.textAlign = 'center';
+  ctx.fillText(`${myScore}`, myX, myY - 10);
+
+  // X축 라벨 (정수 눈금)
+  ctx.fillStyle = '#6b6b90';
+  ctx.font      = '10px system-ui';
+  ctx.textAlign = 'center';
+  const minTick = Math.max(1, Math.ceil(xMin));
+  const maxTick = Math.floor(xMax);
+  for (let v = minTick; v <= maxTick; v++) {
+    ctx.fillText(v, xToCanvas(v), H - pad.bottom + 14);
+  }
+}
+
+/* ════════════════════════════════════════
    세션 요약
 ════════════════════════════════════════ */
-function showSessionSummary() {
+async function showSessionSummary() {
   const t = T[lang];
   const bests = sessionResults.map(r => r.best);
   const best  = Math.max(...bests);
@@ -1208,6 +1391,9 @@ function showSessionSummary() {
 
   drawSummaryChart(bests, t);
   showScreen($summary);
+
+  // 랭킹 로드 (최고 기록 기준)
+  await loadSummaryRanking(best);
 }
 
 function drawSummaryChart(bests, t) {

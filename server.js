@@ -94,7 +94,7 @@ async function initGoogleSheets() {
         range:            'Sheet1!A1',
         valueInputOption: 'RAW',
         resource: { values: [[
-          'ID', '성별', '출생년도', '자극 조건',
+          'ID', '언어', '성별', '출생년도', '자극 조건',
           '최고 Digit', '성공 레벨', '전체 레벨', '소요 시간', '시도 차수', '일시'
         ]] }
       });
@@ -143,8 +143,8 @@ app.use(express.static(__dirname));
 ════════════════════════════════════════ */
 app.post('/api/save', async (req, res) => {
   try {
-    const { name, gender, age, condition, duration_sec, attempt_no, results } = req.body;
-    if (!name || !gender || !age || !condition || !Array.isArray(results)) {
+    const { name, gender, age, condition, duration_sec, attempt_no, results, lang } = req.body;
+    if (!gender || !age || !condition || !Array.isArray(results)) {
       return res.status(400).json({ ok: false, error: '필수 항목 누락' });
     }
 
@@ -170,7 +170,7 @@ app.post('/api/save', async (req, res) => {
 
     // Google Sheets 저장 (비동기, 응답 블로킹 안 함)
     appendToSheet([
-      id, gender, parseInt(age, 10),
+      id, lang || 'ko', gender, parseInt(age, 10),
       condition === '40hz' ? '40Hz' : '핑크노이즈',
       max_digits > 0 ? `${max_digits}-Digit` : '–',
       successes.length, results.length,
@@ -195,6 +195,26 @@ app.get('/api/status', (req, res) => {
     spreadsheet_id_set: !!SPREADSHEET_ID,
     has_env_creds: !!process.env.GOOGLE_CREDENTIALS_JSON,
   });
+});
+
+app.get('/api/rank', (req, res) => {
+  const score = parseFloat(req.query.score);
+  if (!score || score <= 0) return res.json({ rank: 0, total: 0, percentile: 0, allScores: [] });
+
+  const allScores = db.prepare('SELECT max_digits FROM sessions WHERE max_digits > 0').all()
+    .map(r => r.max_digits);
+  const total = allScores.length;
+  if (total === 0) return res.json({ rank: 0, total: 0, percentile: 0, allScores: [] });
+
+  const beaten = allScores.filter(s => s < score).length;
+  const percentile = Math.round((beaten / total) * 100);
+  const rank = allScores.filter(s => s > score).length + 1;
+
+  // 평균/표준편차도 서버에서 계산
+  const mean = allScores.reduce((a, b) => a + b, 0) / total;
+  const std  = Math.sqrt(allScores.reduce((a, b) => a + (b - mean) ** 2, 0) / total) || 1;
+
+  res.json({ rank, total, percentile, mean, std, allScores });
 });
 
 app.get('/api/count', async (req, res) => {
