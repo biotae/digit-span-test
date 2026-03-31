@@ -29,7 +29,6 @@
       align-items: center;
       justify-content: center;
       padding: 1.5rem;
-      padding-top: 2.5rem;
     }
 
     .btn {
@@ -62,7 +61,7 @@
     .lang-switcher {
       display: flex;
       gap: .4rem;
-      justify-content: flex-end;
+      align-items: center;
       margin-bottom: 1.2rem;
     }
     .lang-btn {
@@ -516,21 +515,17 @@
     }
 
     /* ══════════════════════════════
-       파일럿 배너
+       파일럿 태그
     ══════════════════════════════ */
-    .pilot-banner {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      z-index: 9999;
-      background: var(--pink);
-      color: #0d0d1a;
-      text-align: center;
-      font-size: .78rem;
-      font-weight: 800;
-      letter-spacing: .1em;
-      padding: .35rem 0;
+    .pilot-tag {
+      font-size: .68rem;
+      font-weight: 600;
+      letter-spacing: .06em;
+      color: var(--muted);
+      background: rgba(255,255,255,.04);
+      border: 1px dashed rgba(255,255,255,.15);
+      border-radius: 4px;
+      padding: .3rem .9rem;
     }
 
     .hidden { display: none !important; }
@@ -543,11 +538,11 @@
 </head>
 <body>
 
-<div class="pilot-banner" id="pilot-banner">시험 운영 중 (Pilot)</div>
-
 <!-- ══ 시작 / 참가자 정보 입력 화면 ══ -->
 <div id="screen-start">
   <div class="lang-switcher">
+    <span class="pilot-tag">시험 운영 중</span>
+    <span style="flex:1"></span>
     <button class="lang-btn active" id="lang-ko">한국어</button>
     <button class="lang-btn"        id="lang-en">English</button>
     <button class="lang-btn"        id="lang-zh">中文</button>
