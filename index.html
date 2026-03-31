@@ -995,7 +995,7 @@ const $saveStatus = document.getElementById('save-status');
 /* ════════════════════════════════════════
    게임 상태
 ════════════════════════════════════════ */
-const MAX_TRIALS  = 5;
+const MAX_TRIALS  = 3;
 let participant   = { name: '', gender: '', age: 0 };
 let condition     = '';   // '40hz' | 'pink_noise'
 let gameResults   = [];
@@ -1258,7 +1258,7 @@ async function loadSummaryRanking(myScore) {
   try {
     const res = await fetch(`/api/rank?score=${myScore}`);
     const data = await res.json();
-    if (data.total < 2) { rankSection.classList.add('hidden'); return; }
+    if (data.total < 1) { rankSection.classList.add('hidden'); return; }
 
     const t = T[lang];
     const topPct = Math.max(1, 100 - data.percentile);
@@ -1359,7 +1359,7 @@ function drawNormalDistChart(mean, std, myScore) {
   ctx.fillStyle = '#f45e81';
   ctx.font      = 'bold 11px system-ui';
   ctx.textAlign = 'center';
-  ctx.fillText(`${myScore}`, myX, myY - 10);
+  ctx.fillText(`${myScore}-Digit`, myX, myY - 10);
 
   // X축 라벨 (정수 눈금)
   ctx.fillStyle = '#6b6b90';
