@@ -482,7 +482,7 @@
 
 <!-- ══ 결과 화면 ══ -->
 <div id="screen-result" class="hidden">
-  <h2>GAME OVER</h2>
+  <h2>YOUR RESULT</h2>
   <p class="goodbye" id="txt-goodbye"></p>
 
   <div class="result-meta">
@@ -655,8 +655,8 @@ document.getElementById('lang-zh').addEventListener('click', () => { lang = 'zh'
 /* ════════════════════════════════════════
    오디오 유틸 (Web Audio API)
 ════════════════════════════════════════ */
-const STIMULUS_VOL = { '8hz': 1, '40hz': 1, 'pink_noise': 1 };
-const STIMULUS_SRC = { '8hz': '8Hz_T.mp3', '40hz': '40Hz_T.mp3', 'pink_noise': 'pink_T.wav' };
+const STIMULUS_VOL = { '40hz': 1, 'pink_noise': 1 };
+const STIMULUS_SRC = { '40hz': '40Hz_T.mp3', 'pink_noise': 'pink_T.wav' };
 
 let audioCtx     = null;
 let audioBuffers = {};
@@ -758,7 +758,7 @@ const $saveStatus = document.getElementById('save-status');
    게임 상태
 ════════════════════════════════════════ */
 let participant   = { name: '', gender: '', age: 0 };
-let condition     = '';   // '8hz' | '40hz' | 'pink_noise'
+let condition     = '';   // '40hz' | 'pink_noise'
 let gameResults   = [];
 let gameStartTime = 0;
 let attemptNo     = 1;
@@ -1015,7 +1015,7 @@ document.getElementById('btn-start').addEventListener('click', () => {
   if (!age || age < 1) return alert(t.alertAge);
 
   participant = { name, gender, age };
-  condition = ['8hz', '40hz', 'pink_noise'][Math.floor(Math.random() * 3)];
+  condition = ['40hz', 'pink_noise'][Math.floor(Math.random() * 2)];
   unlockAudio();
   runGame();
 });
@@ -1087,7 +1087,7 @@ if (new URLSearchParams(location.search).has('test')) {
 
   document.getElementById('tl-start').addEventListener('click', () => {
     overlay.remove();
-    condition = ['8hz', '40hz', 'pink_noise'][Math.floor(Math.random() * 3)];
+    condition = ['40hz', 'pink_noise'][Math.floor(Math.random() * 2)];
     unlockAudio();
     runGame();
   });
