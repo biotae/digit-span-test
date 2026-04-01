@@ -240,24 +240,45 @@ app.get('/api/status', (req, res) => {
   });
 });
 
-app.get('/api/rank', (req, res) => {
+app.get('/api/rank', async (req, res) => {
   const score = parseFloat(req.query.score);
-  if (!score || score <= 0) return res.json({ rank: 0, total: 0, percentile: 0, allScores: [] });
+  if (!score || score <= 0) return res.json({ rank: 0, total: 0, percentile: 0 });
 
-  const allScores = db.prepare('SELECT max_digits FROM sessions WHERE max_digits > 0').all()
-    .map(r => r.max_digits);
+  let allScores = [];
+
+  // Google Sheets에서 최고 Digit 컬럼(G) 읽기
+  if (sheetsClient && SPREADSHEET_ID) {
+    try {
+      const result = await sheetsClient.spreadsheets.values.get({
+        spreadsheetId: SPREADSHEET_ID,
+        range: 'Sheet1!G2:G',  // 헤더 제외, '최고 Digit' 컬럼
+      });
+      const rows = result.data.values || [];
+      allScores = rows
+        .map(r => parseInt(r[0], 10))  // "5-Digit" → 5
+        .filter(n => n > 0);
+    } catch (e) {
+      console.warn('Sheets rank error:', e.message);
+    }
+  }
+
+  // Sheets 실패 시 SQLite fallback
+  if (allScores.length === 0) {
+    allScores = db.prepare('SELECT max_digits FROM sessions WHERE max_digits > 0').all()
+      .map(r => r.max_digits);
+  }
+
   const total = allScores.length;
-  if (total === 0) return res.json({ rank: 0, total: 0, percentile: 0, allScores: [] });
+  if (total === 0) return res.json({ rank: 0, total: 0, percentile: 0 });
 
   const beaten = allScores.filter(s => s < score).length;
   const percentile = Math.round((beaten / total) * 100);
   const rank = allScores.filter(s => s > score).length + 1;
 
-  // 평균/표준편차도 서버에서 계산
   const mean = allScores.reduce((a, b) => a + b, 0) / total;
   const std  = Math.sqrt(allScores.reduce((a, b) => a + (b - mean) ** 2, 0) / total) || 1;
 
-  res.json({ rank, total, percentile, mean, std, allScores });
+  res.json({ rank, total, percentile, mean, std });
 });
 
 app.get('/api/count', async (req, res) => {

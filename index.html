@@ -698,7 +698,7 @@
       <span class="rank-percentile" id="summary-rank-percentile"></span>
       <span class="rank-detail" id="summary-rank-detail"></span>
     </div>
-    <canvas id="summary-rank-chart" width="320" height="130"></canvas>
+    <canvas id="summary-rank-chart"></canvas>
   </div>
 
   <div class="retry-buttons" style="margin-top:1.5rem;">
@@ -1278,7 +1278,8 @@ async function loadSummaryRanking(myScore) {
 function drawNormalDistChart(mean, std, myScore) {
   const canvas = document.getElementById('summary-rank-chart');
   const dpr    = window.devicePixelRatio || 1;
-  const W = 320, H = 130;
+  const W = Math.min(canvas.parentElement.clientWidth - 24, 400);
+  const H = Math.round(W * 0.4);
   canvas.width  = W * dpr;
   canvas.height = H * dpr;
   canvas.style.width  = W + 'px';
