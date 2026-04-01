@@ -95,7 +95,7 @@ async function initGoogleSheets() {
         valueInputOption: 'RAW',
         resource: { values: [[
           'ID', '세션ID', '언어', '성별', '출생년도', '자극 조건',
-          '최고 Digit', '성공 레벨', '전체 레벨', '소요 시간', '시도 차수', '일시'
+          '최고 Digit', '소요 시간', '시도 차수', '일시'
         ]] }
       });
     }
@@ -216,7 +216,6 @@ app.post('/api/save', async (req, res) => {
       id, session_id || '', lang || 'ko', gender, parseInt(age, 10),
       condition === '40hz' ? '40Hz' : '핑크노이즈',
       max_digits > 0 ? `${max_digits}-Digit` : '–',
-      successes.length, results.length,
       durLabel,
       parseInt(attempt_no, 10) || 1,
       new Date().toLocaleString('ko-KR')
