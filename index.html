@@ -123,6 +123,13 @@
       background-clip: text;
       margin-bottom: .4rem;
     }
+    #screen-start .challenge-msg {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: .6rem;
+      letter-spacing: .03em;
+    }
     #screen-start .subtitle {
       color: var(--muted);
       font-size: .95rem;
@@ -589,6 +596,7 @@
   </div>
 
   <h1>DIGIT SPAN TEST</h1>
+  <p class="challenge-msg" id="txt-challenge"></p>
   <p class="subtitle" id="txt-subtitle"></p>
   <div class="research-info" id="txt-research-info"></div>
 
@@ -713,11 +721,12 @@
 ════════════════════════════════════════ */
 const T = {
   ko: {
+    challenge:      '3번의 도전, 당신의 최고 기록에 도전하세요',
     subtitle:       '화면에 제시된 숫자를 순서대로 기억한 후 입력하세요.<br>숫자 3개로 시작해서, 1개씩 갯수가 늘어납니다.',
     researchInfo:   `<p>이 연구는 <span class="info-highlight">소리 자극의 종류에 따라 인지기능(작업기억)에 미치는 영향</span>을 알아보기 위한 것입니다.</p><p>숫자가 제시되는 동안 소리 자극이 함께 제공됩니다. <span class="info-highlight">헤드폰 또는 이어폰을 착용하고 수행해 주십시오.</span> 아래 볼륨 테스트 버튼을 눌러 음량을 조절하시기 바랍니다. 불편하지 않은 범위 내에서 가능한 한 크게 설정하시는 것을 권장합니다.</p><p>수집된 정보(성별, 출생년도, 수행 결과)는 <span class="info-highlight">연구 목적으로만 사용</span>되며, 연구 이외의 목적으로는 활용되지 않습니다.</p>`,
     volumeTest:     '볼륨 테스트',
     volumePlaying:  '재생 중…',
-    countLabel:     n => `총 이용횟수 <span class="count-num">${n.toLocaleString()}</span> 회`,
+    countLabel:     n => `현재까지 누적 테스트 횟수 <span class="count-num">${n.toLocaleString()}</span> 회`,
     labelGender:    '성별',
     gMale: '남성', gFemale: '여성', gOther: '기타',
     labelBirthYear: '출생년도',  placeholderBirthYear: '1990',
@@ -753,6 +762,7 @@ const T = {
     rankOf:         (rank, total) => `${total}회 측정 중 ${rank}위`,
   },
   en: {
+    challenge:      '3 chances to beat your best record',
     subtitle:       'Watch the digits, then type them back.<br>Starts at 3 — one more after each success.',
     researchInfo:   `<p>This study investigates how <span class="info-highlight">different types of auditory stimuli affect cognitive function (working memory)</span>.</p><p>Auditory stimuli will play alongside the digit sequences. <span class="info-highlight">Please wear headphones or earphones during the task.</span> Use the volume test button below to adjust your volume. We recommend setting it as high as is comfortable.</p><p>Information collected (gender, birth year, and performance) will be used <span class="info-highlight">solely for research purposes</span> and will not be shared or used otherwise.</p>`,
     volumeTest:     'Volume Test',
@@ -793,6 +803,7 @@ const T = {
     rankOf:         (rank, total) => `#${rank} of ${total} tests`,
   },
   zh: {
+    challenge:      '3次挑战，刷新你的最佳记录',
     subtitle:       '记住数字，按顺序输入。<br>从3位开始，答对一次加一位。',
     researchInfo:   `<p>本研究旨在探讨<span class="info-highlight">不同类型听觉刺激对认知功能（工作记忆）的影响</span>。</p><p>数字呈现期间将同步播放听觉刺激，<span class="info-highlight">请佩戴耳机参与测试。</span>请使用下方的音量测试按钮调节音量。建议在不感到不适的前提下尽量调高音量。</p><p>所收集的信息（性别、出生年份及测试结果）<span class="info-highlight">仅用于研究目的</span>，不会用于任何其他用途。</p>`,
     volumeTest:     '音量测试',
@@ -846,6 +857,7 @@ function applyLang() {
   document.getElementById('lang-zh').classList.toggle('active', lang === 'zh');
 
   // 시작 화면
+  document.getElementById('txt-challenge').textContent = t.challenge;
   document.getElementById('txt-subtitle').innerHTML    = t.subtitle;
   document.getElementById('txt-research-info').innerHTML = t.researchInfo;
   document.getElementById('lbl-gender').textContent = t.labelGender;
