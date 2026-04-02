@@ -326,6 +326,7 @@ app.get('/api/export.csv', (req, res) => {
    API: 시트 클리어 & 헤더 재설정
 ════════════════════════════════════════ */
 app.post('/admin/clear-sheet', async (req, res) => {
+  if (req.query.pw !== ADMIN_PW) return res.status(401).json({ ok: false, error: 'Unauthorized' });
   if (!sheetsClient || !SPREADSHEET_ID) {
     return res.status(400).json({ ok: false, error: 'Google Sheets 미연결' });
   }
@@ -365,6 +366,7 @@ app.post('/admin/clear-sheet', async (req, res) => {
    통계 분석: 40Hz vs Pink Noise 비교 + 차트 생성
 ════════════════════════════════════════ */
 app.post('/admin/generate-stats', async (req, res) => {
+  if (req.query.pw !== ADMIN_PW) return res.status(401).json({ ok: false, error: 'Unauthorized' });
   if (!sheetsClient || !SPREADSHEET_ID) {
     return res.status(400).json({ ok: false, error: 'Google Sheets 미연결' });
   }
@@ -588,7 +590,16 @@ function lnGamma(z) {
 /* ════════════════════════════════════════
    관리자 페이지
 ════════════════════════════════════════ */
+const ADMIN_PW = process.env.ADMIN_PW || 't';
+
 app.get('/admin', (req, res) => {
+  if (req.query.pw !== ADMIN_PW) {
+    return res.send(`<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Admin Login</title><style>body{background:#0d0d1a;color:#e8e8f0;font-family:system-ui;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0}
+.box{text-align:center}input{background:#13132b;border:1px solid rgba(94,129,244,.3);border-radius:8px;color:#e8e8f0;padding:.6rem 1rem;font-size:1rem;outline:none;margin:.8rem 0}
+button{background:#5e81f4;border:none;border-radius:8px;color:#fff;padding:.6rem 1.5rem;font-size:1rem;font-weight:700;cursor:pointer}</style></head><body>
+<div class="box"><h2>Admin</h2><form method="GET" action="/admin"><input type="password" name="pw" placeholder="Password" autofocus><br><button type="submit">Enter</button></form></div></body></html>`);
+  }
   const rows   = allStmt.all();
   const total  = rows.length;
   const n8     = rows.filter(r => r.condition === '8hz').length;
@@ -670,8 +681,9 @@ app.get('/admin', (req, res) => {
   <tbody>${tableRows}</tbody>
 </table>
 <script>
+const adminPw = new URLSearchParams(location.search).get('pw');
 async function generateStats() {
-  const res = await fetch('/admin/generate-stats', { method: 'POST' });
+  const res = await fetch('/admin/generate-stats?pw=' + encodeURIComponent(adminPw), { method: 'POST' });
   const data = await res.json();
   if (data.ok) {
     const s = data.stats;
@@ -680,7 +692,7 @@ async function generateStats() {
 }
 async function clearSheet() {
   if (!confirm('Google 시트의 모든 데이터를 삭제하고 헤더를 초기화합니다. 계속하시겠습니까?')) return;
-  const res = await fetch('/admin/clear-sheet', { method: 'POST' });
+  const res = await fetch('/admin/clear-sheet?pw=' + encodeURIComponent(adminPw), { method: 'POST' });
   const data = await res.json();
   if (data.ok) { alert('시트가 초기화되었습니다.'); location.reload(); }
   else alert('오류: ' + data.error);
