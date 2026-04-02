@@ -1273,7 +1273,7 @@ async function loadSummaryRanking(myScore) {
     if (data.total < 1) { rankSection.classList.add('hidden'); return; }
 
     const t = T[lang];
-    const topPct = Math.max(1, 100 - data.percentile);
+    const topPct = Math.max(1, Math.round((data.rank / data.total) * 100));
 
     document.getElementById('summary-rank-label').textContent       = t.rankLabel;
     document.getElementById('summary-rank-percentile').textContent   = t.rankTop(topPct);
