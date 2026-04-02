@@ -351,7 +351,7 @@ app.post('/admin/clear-sheet', async (req, res) => {
       valueInputOption: 'RAW',
       resource: { values: [[
         'ID', '세션ID', '언어', '성별', '출생년도', '자극 조건',
-        '최고 Digit', '성공 레벨', '전체 레벨', '소요 시간', '시도 차수', '일시'
+        '최고 Digit', '소요 시간', '시도 차수', '일시'
       ]] }
     });
     res.json({ ok: true });
@@ -360,6 +360,230 @@ app.post('/admin/clear-sheet', async (req, res) => {
     res.status(500).json({ ok: false, error: e.message });
   }
 });
+
+/* ════════════════════════════════════════
+   통계 분석: 40Hz vs Pink Noise 비교 + 차트 생성
+════════════════════════════════════════ */
+app.post('/admin/generate-stats', async (req, res) => {
+  if (!sheetsClient || !SPREADSHEET_ID) {
+    return res.status(400).json({ ok: false, error: 'Google Sheets 미연결' });
+  }
+  try {
+    // Sheet1에서 자극 조건(F)과 최고 Digit(G) 읽기
+    const result = await sheetsClient.spreadsheets.values.get({
+      spreadsheetId: SPREADSHEET_ID,
+      range: 'Sheet1!F2:G',
+    });
+    const rows = result.data.values || [];
+
+    const hz40  = rows.filter(r => r[0] === '40Hz').map(r => parseInt(r[1], 10)).filter(n => n > 0);
+    const pink  = rows.filter(r => r[0] === '핑크노이즈').map(r => parseInt(r[1], 10)).filter(n => n > 0);
+
+    if (hz40.length < 2 || pink.length < 2) {
+      return res.status(400).json({ ok: false, error: '각 조건에 최소 2개 이상의 데이터 필요' });
+    }
+
+    // 통계 계산
+    const mean = arr => arr.reduce((a, b) => a + b, 0) / arr.length;
+    const variance = arr => { const m = mean(arr); return arr.reduce((a, b) => a + (b - m) ** 2, 0) / (arr.length - 1); };
+
+    const m1 = mean(hz40), m2 = mean(pink);
+    const v1 = variance(hz40), v2 = variance(pink);
+    const n1 = hz40.length, n2 = pink.length;
+    const se = Math.sqrt(v1 / n1 + v2 / n2);
+    const tStat = se > 0 ? (m1 - m2) / se : 0;
+
+    // Welch's df
+    const df = se > 0
+      ? ((v1 / n1 + v2 / n2) ** 2) / ((v1 / n1) ** 2 / (n1 - 1) + (v2 / n2) ** 2 / (n2 - 1))
+      : 1;
+
+    // p-value 근사 (two-tailed, t-distribution 근사)
+    const absT = Math.abs(tStat);
+    const p = approxTTestPValue(absT, Math.round(df));
+
+    // Stats 시트 생성/업데이트
+    // 기존 Stats 시트 삭제 후 재생성
+    try {
+      const meta = await sheetsClient.spreadsheets.get({ spreadsheetId: SPREADSHEET_ID });
+      const statsSheet = meta.data.sheets.find(s => s.properties.title === 'Stats');
+      if (statsSheet) {
+        // 기존 차트 삭제
+        const charts = statsSheet.charts || [];
+        const deleteRequests = charts.map(c => ({ deleteEmbeddedObject: { objectId: c.chartId } }));
+        // 시트 내용 클리어
+        await sheetsClient.spreadsheets.values.clear({
+          spreadsheetId: SPREADSHEET_ID,
+          range: 'Stats',
+        });
+        if (deleteRequests.length > 0) {
+          await sheetsClient.spreadsheets.batchUpdate({
+            spreadsheetId: SPREADSHEET_ID,
+            resource: { requests: deleteRequests }
+          });
+        }
+      } else {
+        await sheetsClient.spreadsheets.batchUpdate({
+          spreadsheetId: SPREADSHEET_ID,
+          resource: { requests: [{ addSheet: { properties: { title: 'Stats' } } }] }
+        });
+      }
+    } catch (_) {}
+
+    // 통계 결과 쓰기
+    const statsData = [
+      ['40Hz vs 핑크노이즈 — 독립표본 t-검정 (Welch)'],
+      [],
+      ['', '40Hz', '핑크노이즈'],
+      ['N', n1, n2],
+      ['평균 (Mean)', m1.toFixed(2), m2.toFixed(2)],
+      ['표준편차 (SD)', Math.sqrt(v1).toFixed(2), Math.sqrt(v2).toFixed(2)],
+      [],
+      ['t-statistic', tStat.toFixed(4)],
+      ['df', Math.round(df)],
+      ['p-value', p < 0.001 ? '< 0.001' : p.toFixed(4)],
+      ['유의수준 α = 0.05', p < 0.05 ? '유의미한 차이 있음 ✓' : '유의미한 차이 없음'],
+      [],
+      ['', '40Hz', '핑크노이즈'],
+      ...(() => {
+        // 바 차트용 데이터 (평균 비교)
+        return [['평균 최고 Digit', m1.toFixed(2), m2.toFixed(2)]];
+      })(),
+    ];
+
+    await sheetsClient.spreadsheets.values.update({
+      spreadsheetId: SPREADSHEET_ID,
+      range: 'Stats!A1',
+      valueInputOption: 'RAW',
+      resource: { values: statsData }
+    });
+
+    // Stats 시트 ID 가져오기
+    const metaAfter = await sheetsClient.spreadsheets.get({ spreadsheetId: SPREADSHEET_ID });
+    const statsSheetId = metaAfter.data.sheets.find(s => s.properties.title === 'Stats').properties.sheetId;
+
+    // 바 차트 생성
+    await sheetsClient.spreadsheets.batchUpdate({
+      spreadsheetId: SPREADSHEET_ID,
+      resource: {
+        requests: [{
+          addChart: {
+            chart: {
+              position: {
+                overlayPosition: {
+                  anchorCell: { sheetId: statsSheetId, rowIndex: 0, columnIndex: 4 },
+                  widthPixels: 500,
+                  heightPixels: 350,
+                }
+              },
+              spec: {
+                title: `40Hz vs 핑크노이즈 — 평균 최고 Digit (p = ${p < 0.001 ? '< 0.001' : p.toFixed(4)})`,
+                basicChart: {
+                  chartType: 'COLUMN',
+                  legendPosition: 'BOTTOM_LEGEND',
+                  axis: [
+                    { position: 'BOTTOM_AXIS', title: '자극 조건' },
+                    { position: 'LEFT_AXIS', title: '최고 Digit (평균)' },
+                  ],
+                  domains: [{
+                    domain: { sourceRange: { sources: [{
+                      sheetId: statsSheetId, startRowIndex: 12, endRowIndex: 13,
+                      startColumnIndex: 1, endColumnIndex: 3,
+                    }]}}
+                  }],
+                  series: [{
+                    series: { sourceRange: { sources: [{
+                      sheetId: statsSheetId, startRowIndex: 13, endRowIndex: 14,
+                      startColumnIndex: 1, endColumnIndex: 3,
+                    }]}},
+                    targetAxis: 'LEFT_AXIS',
+                  }],
+                  headerCount: 1,
+                }
+              }
+            }
+          }
+        }]
+      }
+    });
+
+    res.json({
+      ok: true,
+      stats: {
+        hz40: { n: n1, mean: m1.toFixed(2), sd: Math.sqrt(v1).toFixed(2) },
+        pink: { n: n2, mean: m2.toFixed(2), sd: Math.sqrt(v2).toFixed(2) },
+        t: tStat.toFixed(4),
+        df: Math.round(df),
+        p: p < 0.001 ? '< 0.001' : p.toFixed(4),
+        significant: p < 0.05,
+      }
+    });
+  } catch (e) {
+    console.error('Stats generation error:', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// t분포 p-value 근사 (two-tailed)
+function approxTTestPValue(t, df) {
+  // Abramowitz & Stegun 근사
+  const x = df / (df + t * t);
+  const a = df / 2;
+  const b = 0.5;
+  // Regularized incomplete beta function 근사
+  const beta = incompleteBeta(x, a, b);
+  return Math.min(1, beta);
+}
+
+function incompleteBeta(x, a, b) {
+  // 연분수 근사 (Lentz method)
+  if (x === 0 || x === 1) return x === 0 ? 1 : 0;
+  const lnBeta = lnGamma(a) + lnGamma(b) - lnGamma(a + b);
+  const front = Math.exp(Math.log(x) * a + Math.log(1 - x) * b - lnBeta);
+
+  let f = 1, c = 1, d = 0;
+  for (let i = 0; i <= 200; i++) {
+    let m = Math.floor(i / 2);
+    let num;
+    if (i === 0) {
+      num = 1;
+    } else if (i % 2 === 0) {
+      num = (m * (b - m) * x) / ((a + 2 * m - 1) * (a + 2 * m));
+    } else {
+      num = -((a + m) * (a + b + m) * x) / ((a + 2 * m) * (a + 2 * m + 1));
+    }
+
+    d = 1 + num * d;
+    if (Math.abs(d) < 1e-30) d = 1e-30;
+    d = 1 / d;
+
+    c = 1 + num / c;
+    if (Math.abs(c) < 1e-30) c = 1e-30;
+
+    f *= c * d;
+    if (Math.abs(c * d - 1) < 1e-10) break;
+  }
+
+  return front * (f - 1) / a;
+}
+
+function lnGamma(z) {
+  // Lanczos 근사
+  const g = 7;
+  const coef = [
+    0.99999999999980993, 676.5203681218851, -1259.1392167224028,
+    771.32342877765313, -176.61502916214059, 12.507343278686905,
+    -0.13857109526572012, 9.9843695780195716e-6, 1.5056327351493116e-7
+  ];
+  if (z < 0.5) {
+    return Math.log(Math.PI / Math.sin(Math.PI * z)) - lnGamma(1 - z);
+  }
+  z -= 1;
+  let x = coef[0];
+  for (let i = 1; i < g + 2; i++) x += coef[i] / (z + i);
+  const t = z + g + 0.5;
+  return 0.5 * Math.log(2 * Math.PI) + (z + 0.5) * Math.log(t) - t + Math.log(x);
+}
 
 /* ════════════════════════════════════════
    관리자 페이지
@@ -436,6 +660,7 @@ app.get('/admin', (req, res) => {
   <a class="btn btn-csv" href="/api/export.csv">CSV 다운로드</a>
   ${sheetLink}
   <button class="btn btn-ref" onclick="location.reload()">새로고침</button>
+  <button class="btn btn-clear" onclick="generateStats()" style="background:#5e81f4">통계 분석</button>
   <button class="btn btn-clear" onclick="clearSheet()">시트 클리어</button>
   <a class="btn btn-back" href="/">← 테스트</a>
 </div>
@@ -445,6 +670,14 @@ app.get('/admin', (req, res) => {
   <tbody>${tableRows}</tbody>
 </table>
 <script>
+async function generateStats() {
+  const res = await fetch('/admin/generate-stats', { method: 'POST' });
+  const data = await res.json();
+  if (data.ok) {
+    const s = data.stats;
+    alert(\`통계 분석 완료!\\n\\n40Hz: N=\${s.hz40.n}, M=\${s.hz40.mean}, SD=\${s.hz40.sd}\\n핑크노이즈: N=\${s.pink.n}, M=\${s.pink.mean}, SD=\${s.pink.sd}\\n\\nt = \${s.t}, df = \${s.df}, p = \${s.p}\\n\${s.significant ? '→ 유의미한 차이 있음' : '→ 유의미한 차이 없음'}\\n\\nGoogle 시트의 Stats 탭에서 차트를 확인하세요.\`);
+  } else alert('오류: ' + data.error);
+}
 async function clearSheet() {
   if (!confirm('Google 시트의 모든 데이터를 삭제하고 헤더를 초기화합니다. 계속하시겠습니까?')) return;
   const res = await fetch('/admin/clear-sheet', { method: 'POST' });
